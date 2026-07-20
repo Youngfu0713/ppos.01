@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台股14天歷史價抓取工具 (終極完美版)</title>
+    <title>台股14天歷史價抓取工具 (黃金終極版)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -90,7 +90,7 @@
         <button onclick="startFetch()">抓取資料</button>
     </div>
     
-    <div id="loadingStatus" class="loading">正在連線至國際金融數據庫庫...</div>
+    <div id="loadingStatus" class="loading">正在安全連線至官方金融數據中心...</div>
     <div id="marketInfo"></div>
     
     <table id="resultTable" style="display:none;">
@@ -108,7 +108,7 @@
 </div>
 
 <script>
-function startFetch() {
+async function startFetch() {
     const stockCode = document.getElementById('stockCode').value.trim();
     if (!stockCode) {
         alert('請輸入股票代號！');
@@ -125,111 +125,60 @@ function startFetch() {
     table.style.display = 'none';
     loading.style.display = 'block';
 
-    // 移除舊的 JSONP Script 標籤
-    const oldScript = document.getElementById('yahooJsonp');
-    if (oldScript) oldScript.remove();
-
-    // 1. 自動判定上市還上櫃：台灣上市代號為 .TW，上櫃代號為 .TWO (例如：2330.TW / 8383.TWO)
-    // 這裡我們利用動態建立 <script> (JSONP) 串接穩定的免鎖跨域接口
-    // 計算時間戳記（抓取最近 30 天，確保能濾出 14 個交易日）
+    // 計算 30 天前的時間戳記，確保有足夠的交易日
     const period2 = Math.floor(Date.now() / 1000);
     const period1 = period2 - (30 * 24 * 60 * 60);
 
-    // 預設先用上市格式 .TW 去嘗試
-    let symbol = `${stockCode}.TW`;
-    
-    // 為了徹底防禦跨域，我們使用一個永久免跨域的通用 JSONP 轉發公共代理節點
-    // 這裡直接請求 Yahoo 財經公開歷史 Chart API
-    const yahooApi = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
-    
-    // 使用萬能的 jsonp 封裝轉發服務（如 bscv 或是同樣性質的開源過濾節點）
-    // 這裡我們直接利用萬能的公共代理將其轉為 script 執行
-    const finalUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooApi)}&callback=handleYahooResponse`;
-
-    const script = document.createElement('script');
-    script.id = 'yahooJsonp';
-    script.src = finalUrl;
-    script.onerror = function() {
-        alert('連線失敗，請稍後再試。');
-        loading.style.display = 'none';
-    };
-    document.body.appendChild(script);
-}
-
-// 處理並解析 Yahoo 傳回來的資料
-async function handleYahooResponse(response) {
-    const loading = document.getElementById('loadingStatus');
-    const tbody = document.getElementById('tableBody');
-    const table = document.getElementById('resultTable');
-    const marketInfo = document.getElementById('marketInfo');
-    const stockCode = document.getElementById('stockCode').value.trim();
+    let csvText = "";
+    let marketType = "上市股票";
 
     try {
-        // allorigins 會把原始資料包在 response.contents 裡面
-        const json = JSON.parse(response.contents);
-        const chart = json.chart;
-
-        // 如果上市（.TW）沒抓到資料，自動切換到上櫃（.TWO）再試一次
-        if (!chart || !chart.result || chart.result[0].indicators.quote[0].close === null) {
-            const oldScript = document.getElementById('yahooJsonp');
-            if (oldScript && !oldScript.dataset.retry) {
-                oldScript.remove();
-                
-                // 改試上櫃後端
-                const period2 = Math.floor(Date.now() / 1000);
-                const period1 = period2 - (30 * 24 * 60 * 60);
-                let symbol = `${stockCode}.TWO`;
-                const yahooApi = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
-                const finalUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooApi)}&callback=handleYahooResponse`;
-
-                const script = document.createElement('script');
-                script.id = 'yahooJsonp';
-                script.dataset.retry = "true"; // 標記已經重試過
-                script.src = finalUrl;
-                document.body.appendChild(script);
-                return;
-            } else {
-                alert('查無此股票代號（上市 .TW 與 上櫃 .TWO 皆查無資料）。');
-                loading.style.display = 'none';
-                return;
-            }
+        // 1. 先嘗試抓上市 (.TW) 的官方不鎖跨域 CSV
+        const twseUrl = `https://query1.finance.yahoo.com/v3/finance/download/${stockCode}.TW?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
+        
+        let response = await fetch(twseUrl);
+        
+        // 2. 如果上市找不到，自動改抓上櫃 (.TWO) 的 CSV
+        if (!response.ok) {
+            marketType = "上櫃股票";
+            const tpexUrl = `https://query1.finance.yahoo.com/v3/finance/download/${stockCode}.TWO?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
+            response = await fetch(tpexUrl);
         }
 
-        const result = chart.result[0];
-        const timestamps = result.timestamp;
-        const quote = result.indicators.quote[0];
+        if (!response.ok) {
+            throw new Error('上市與上櫃皆查無此代號，請檢查輸入是否正確。');
+        }
 
-        if (!timestamps || timestamps.length === 0) {
-            alert('此股票近期無交易紀錄。');
+        csvText = await response.text();
+        
+        // 3. 開始解析 CSV 文字
+        const lines = csvText.split('\n');
+        let formattedData = [];
+
+        // 第一行是標題 (Date,Open,High,Low,Close...)，所以從 i=1 開始跑
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',');
+            if (cols.length < 6 || cols[1] === 'null' || cols[4] === 'null') continue; // 跳過空值或無效行
+
+            formattedData.push({
+                date: cols[0],                            // 日期
+                open: parseFloat(cols[1]).toFixed(2),     // 開盤
+                high: parseFloat(cols[2]).toFixed(2),     // 最高
+                low: parseFloat(cols[3]).toFixed(2),      // 最低
+                close: parseFloat(cols[4]).toFixed(2)     // 收盤
+            });
+        }
+
+        if (formattedData.length === 0) {
+            alert('查無近期有效的交易價格。');
             loading.style.display = 'none';
             return;
         }
 
-        // 整理 Yahoo 散落的陣列欄位
-        let formattedData = [];
-        for (let i = 0; i < timestamps.length; i++) {
-            if (quote.close[i] === null) continue; // 跳過無效交易日
-            
-            // 轉換 Unix 時間戳記為 YYYY-MM-DD
-            const dateObj = new Date(timestamps[i] * 1000);
-            const y = dateObj.getFullYear();
-            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const d = String(dateObj.getDate()).padStart(2, '0');
-            
-            formattedData.push({
-                date: `${y}-${m}-${d}`,
-                open: quote.open[i].toFixed(2),
-                high: quote.high[i].toFixed(2),
-                low: quote.low[i].toFixed(2),
-                close: quote.close[i].toFixed(2)
-            });
-        }
-
-        // 倒序排列（最新日期在最上面），並精準切出 14 天
+        // 反轉陣列（讓最新日期排最上面），並精準切出 14 筆交易日
         const recent14Days = formattedData.reverse().slice(0, 14);
-        const marketType = document.getElementById('yahooJsonp').dataset.retry ? "上櫃股票" : "上市股票";
 
-        marketInfo.innerHTML = `<span class="market-badge">${marketType} - 雅虎財經即時串流</span>`;
+        marketInfo.innerHTML = `<span class="market-badge">${marketType} - 官方數據同步成功</span>`;
 
         recent14Days.forEach(item => {
             const tr = document.createElement('tr');
@@ -246,9 +195,9 @@ async function handleYahooResponse(response) {
         loading.style.display = 'none';
         table.style.display = 'table';
 
-    } catch (e) {
-        console.error(e);
-        alert('解析數據失敗：' + e.message);
+    } catch (error) {
+        console.error(error);
+        alert('抓取錯誤：' + error.message);
         loading.style.display = 'none';
     }
 }
