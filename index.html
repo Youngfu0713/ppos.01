@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台股14天歷史價抓取工具 (GitHub 專用版)</title>
+    <title>台股14天歷史價抓取工具 (GitHub 完美版)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -90,7 +90,7 @@
         <button onclick="startFetch()">抓取資料</button>
     </div>
     
-    <div id="loadingStatus" class="loading">正在向開放資料庫請求市場交易數據...</div>
+    <div id="loadingStatus" class="loading">正在連線至開放金融資料庫...</div>
     <div id="marketInfo"></div>
     
     <table id="resultTable" style="display:none;">
@@ -125,66 +125,47 @@ async function startFetch() {
     table.style.display = 'none';
     loading.style.display = 'block';
 
-    let finalData = [];
-    let marketType = "";
+    // 計算一個月前的日期，確保能拿到足夠 14 天的歷史資料
+    const today = new Date();
+    const pastDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+    
+    const formatDate = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const startDate = formatDate(pastDate);
+
+    // 呼叫 FinMind 公開台股日成交資料 API (完全不鎖 CORS)
+    const apiUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockCode}&start_date=${startDate}`;
 
     try {
-        // 1. 先嘗試從【上市】開放資料節點抓取所有股票的個股日成交資訊
-        const twseResponse = await fetch(`https://openapi.twse.com.tw/v1/stock/STOCK_DAY_ALL`);
-        if (twseResponse.ok) {
-            const twseData = await twseResponse.json();
-            const matchedTwse = twseData.filter(item => item.Code === stockCode);
-            if (matchedTwse.length > 0) {
-                marketType = "上市股票";
-                finalData = matchedTwse.map(item => ({
-                    date: item.Date ? `${item.Date.slice(0,4)}/${item.Date.slice(4,6)}/${item.Date.slice(6,8)}` : "今日",
-                    open: item.OpeningPrice,
-                    high: item.HighestPrice,
-                    low: item.LowestPrice,
-                    close: item.ClosingPrice
-                }));
-            }
-        }
-
-        // 2. 如果上市找不到，改用【上櫃】開放資料節點 (專門開給公眾 Fetch 的 api)
-        if (finalData.length === 0) {
-            // 呼叫櫃買中心不鎖 CORS 的 OpenAPI 行情節點
-            const tpexResponse = await fetch(`https://openapi.tpex.org.tw/v1/stock/aftertrading/daily_close_quotes`);
-            if (tpexResponse.ok) {
-                const tpexData = await tpexResponse.json();
-                const matchedTpex = tpexData.filter(item => item.Code === stockCode);
-                if (matchedTpex.length > 0) {
-                    marketType = "上櫃股票";
-                    finalData = matchedTpex.map(item => ({
-                        date: item.Date ? `${item.Date.slice(0,3)}/${item.Date.slice(3,5)}/${item.Date.slice(5,7)}` : "今日",
-                        open: item.Open,
-                        high: item.High,
-                        low: item.Low,
-                        close: item.Close
-                    }));
-                }
-            }
-        }
-
-        if (finalData.length === 0) {
-            alert('在開放資料庫中查無此股票代號（或今日數據尚未更新）。');
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('網路請求失敗');
+        
+        const resData = await response.json();
+        
+        if (resData.status !== 200 || !resData.data || resData.data.length === 0) {
+            alert('查無此股票歷史資料，請確認代號是否正確。');
             loading.style.display = 'none';
             return;
         }
 
-        // 截取最新 14 筆（開放資料部分節點為單日或多日，此處倒序排列呈現最新狀態）
-        const recent14Days = finalData.reverse().slice(0, 14);
+        // FinMind 資料是正序（舊到新），我們將其反轉（新到舊），並截取最新的 14 筆
+        const recent14Days = resData.data.reverse().slice(0, 14);
 
-        marketInfo.innerHTML = `<span class="market-badge">${marketType} - 網頁環境請求成功</span>`;
+        marketInfo.innerHTML = `<span class="market-badge">個股歷史行情 - 已透過 FinMind 渲染</span>`;
         
         recent14Days.forEach(item => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.date}</td>
-                <td style="color:#333;">${item.open || '--'}</td>
-                <td style="color:#d9383a;">${item.high || '--'}</td>
-                <td style="color:#2da44e;">${item.low || '--'}</td>
-                <td style="font-weight:bold;">${item.close || '--'}</td>
+                <td style="color:#333;">${item.open}</td>
+                <td style="color:#d9383a;">${item.max}</td>
+                <td style="color:#2da44e;">${item.min}</td>
+                <td style="font-weight:bold;">${item.close}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -194,7 +175,7 @@ async function startFetch() {
 
     } catch (error) {
         console.error(error);
-        alert('請求發生錯誤：' + error.message);
+        alert('抓取失敗：' + error.message);
         loading.style.display = 'none';
     }
 }
