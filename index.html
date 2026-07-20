@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台股14天歷史價抓取工具 (GitHub 完美版)</title>
+    <title>台股14天歷史價抓取工具 (開源數據庫版)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -90,7 +90,7 @@
         <button onclick="startFetch()">抓取資料</button>
     </div>
     
-    <div id="loadingStatus" class="loading">正在連線至開放金融資料庫...</div>
+    <div id="loadingStatus" class="loading">正在連線至 GitHub 開源日線數據庫...</div>
     <div id="marketInfo"></div>
     
     <table id="resultTable" style="display:none;">
@@ -125,46 +125,42 @@ async function startFetch() {
     table.style.display = 'none';
     loading.style.display = 'block';
 
-    // 計算一個月前的日期，確保能拿到足夠 14 天的歷史資料
-    const today = new Date();
-    const pastDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-    
-    const formatDate = (d) => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+    // 獲取當前年份，用來決定讀取開源專案中的哪一個年度 JSON 檔
+    const currentYear = new Date().getFullYear();
 
-    const startDate = formatDate(pastDate);
-
-    // 呼叫 FinMind 公開台股日成交資料 API (完全不鎖 CORS)
-    const apiUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockCode}&start_date=${startDate}`;
+    // 串接開源社群維護的台股每日歷史數據節點 (這個來源是封裝在 GitHub 上的靜態資源，完全免除 CORS 問題)
+    // 格式為：https://raw.githubusercontent.com/jiandong-tw/taiwan-stock-data/main/data/daily/{year}/{stockCode}.json
+    const apiUrl = `https://cdn.jsdelivr.net/gh/jiandong-tw/taiwan-stock-data@main/data/daily/${currentYear}/${stockCode}.json`;
 
     try {
+        // 使用 jsDelivr CDN 讀取 GitHub 檔案，速度最快且完全不鎖跨域
         const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error('網路請求失敗');
         
-        const resData = await response.json();
+        if (!response.ok) {
+            throw new Error('找不到該個股歷史檔案，可能代號錯誤或今年度尚無交易紀錄。');
+        }
         
-        if (resData.status !== 200 || !resData.data || resData.data.length === 0) {
-            alert('查無此股票歷史資料，請確認代號是否正確。');
+        const stockHistory = await response.json();
+        
+        if (!stockHistory || stockHistory.length === 0) {
+            alert('該股票今年度無資料。');
             loading.style.display = 'none';
             return;
         }
 
-        // FinMind 資料是正序（舊到新），我們將其反轉（新到舊），並截取最新的 14 筆
-        const recent14Days = resData.data.reverse().slice(0, 14);
+        // 開源資料格式通常是舊到新，我們將其反轉（最新在最上），並擷取最新的 14 筆交易日
+        const recent14Days = stockHistory.reverse().slice(0, 14);
 
-        marketInfo.innerHTML = `<span class="market-badge">個股歷史行情 - 已透過 FinMind 渲染</span>`;
+        marketInfo.innerHTML = `<span class="market-badge">數據來源：GitHub 開源台股日線庫</span>`;
         
         recent14Days.forEach(item => {
+            // 開源資料庫的欄位名稱通常為：date(日期), open(開盤), high(最高), low(最低), close(收盤)
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.date}</td>
                 <td style="color:#333;">${item.open}</td>
-                <td style="color:#d9383a;">${item.max}</td>
-                <td style="color:#2da44e;">${item.min}</td>
+                <td style="color:#d9383a;">${item.high}</td>
+                <td style="color:#2da44e;">${item.low}</td>
                 <td style="font-weight:bold;">${item.close}</td>
             `;
             tbody.appendChild(tr);
@@ -175,7 +171,7 @@ async function startFetch() {
 
     } catch (error) {
         console.error(error);
-        alert('抓取失敗：' + error.message);
+        alert('抓取失敗：' + error.message + '\n提示：請確認代號是否正確。若為剛開工年初，可能需等候數據庫同步更新。');
         loading.style.display = 'none';
     }
 }
