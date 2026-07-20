@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台股14天歷史價抓取工具 (黃金終極版)</title>
+    <title>台股14天歷史價抓取工具 (完美代理版)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -90,7 +90,7 @@
         <button onclick="startFetch()">抓取資料</button>
     </div>
     
-    <div id="loadingStatus" class="loading">正在安全連線至官方金融數據中心...</div>
+    <div id="loadingStatus" class="loading">正在穿透跨域阻擋，安全載入數據...</div>
     <div id="marketInfo"></div>
     
     <table id="resultTable" style="display:none;">
@@ -125,60 +125,63 @@ async function startFetch() {
     table.style.display = 'none';
     loading.style.display = 'block';
 
-    // 計算 30 天前的時間戳記，確保有足夠的交易日
+    // 計算 30 天前的時間戳記
     const period2 = Math.floor(Date.now() / 1000);
     const period1 = period2 - (30 * 24 * 60 * 60);
 
     let csvText = "";
     let marketType = "上市股票";
 
+    // 使用專門幫前端翻牆的公共免簽名代理 (api.codetabs.com)，它會在伺服器端幫我們抓雅虎，再大方補上 CORS 允許標頭回傳給我們
+    const proxy = "https://api.codetabs.com/v1/proxy/?url=";
+
     try {
-        // 1. 先嘗試抓上市 (.TW) 的官方不鎖跨域 CSV
-        const twseUrl = `https://query1.finance.yahoo.com/v3/finance/download/${stockCode}.TW?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
+        // 1. 先嘗試抓上市 (.TW)
+        const twseTarget = `https://query1.finance.yahoo.com/v3/finance/download/${stockCode}.TW?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
         
-        let response = await fetch(twseUrl);
-        
-        // 2. 如果上市找不到，自動改抓上櫃 (.TWO) 的 CSV
-        if (!response.ok) {
-            marketType = "上櫃股票";
-            const tpexUrl = `https://query1.finance.yahoo.com/v3/finance/download/${stockCode}.TWO?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
-            response = await fetch(tpexUrl);
-        }
-
-        if (!response.ok) {
-            throw new Error('上市與上櫃皆查無此代號，請檢查輸入是否正確。');
-        }
-
+        let response = await fetch(proxy + encodeURIComponent(twseTarget));
         csvText = await response.text();
         
-        // 3. 開始解析 CSV 文字
+        // 如果回傳的內容包含 404 或明顯不是 CSV 格式（雅虎找不到上市代號時會吐 404 文字），就切換到上櫃
+        if (!response.ok || csvText.includes("404 Not Found") || csvText.trim().startsWith("<!DOCTYPE")) {
+            marketType = "上櫃股票";
+            const tpexTarget = `https://query1.finance.yahoo.com/v3/finance/download/${stockCode}.TWO?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
+            
+            response = await fetch(proxy + encodeURIComponent(tpexTarget));
+            csvText = await response.text();
+        }
+
+        if (!response.ok || csvText.includes("404 Not Found") || csvText.trim().startsWith("<!DOCTYPE")) {
+            throw new Error('上市與上櫃皆查無此個股，請確認代號是否正確。');
+        }
+        
+        // 2. 開始解析 CSV 文字
         const lines = csvText.split('\n');
         let formattedData = [];
 
-        // 第一行是標題 (Date,Open,High,Low,Close...)，所以從 i=1 開始跑
         for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(',');
-            if (cols.length < 6 || cols[1] === 'null' || cols[4] === 'null') continue; // 跳過空值或無效行
+            if (cols.length < 6 || cols[1] === 'null' || cols[4] === 'null' || !cols[0]) continue;
 
             formattedData.push({
-                date: cols[0],                            // 日期
-                open: parseFloat(cols[1]).toFixed(2),     // 開盤
-                high: parseFloat(cols[2]).toFixed(2),     // 最高
-                low: parseFloat(cols[3]).toFixed(2),      // 最低
-                close: parseFloat(cols[4]).toFixed(2)     // 收盤
+                date: cols[0],
+                open: parseFloat(cols[1]).toFixed(2),
+                high: parseFloat(cols[2]).toFixed(2),
+                low: parseFloat(cols[3]).toFixed(2),
+                close: parseFloat(cols[4]).toFixed(2)
             });
         }
 
         if (formattedData.length === 0) {
-            alert('查無近期有效的交易價格。');
+            alert('此股票檔案內無效價格紀錄。');
             loading.style.display = 'none';
             return;
         }
 
-        // 反轉陣列（讓最新日期排最上面），並精準切出 14 筆交易日
+        // 最新日期擺在最上面，切出 14 天
         const recent14Days = formattedData.reverse().slice(0, 14);
 
-        marketInfo.innerHTML = `<span class="market-badge">${marketType} - 官方數據同步成功</span>`;
+        marketInfo.innerHTML = `<span class="market-badge">${marketType} - 萬能代理穿透成功</span>`;
 
         recent14Days.forEach(item => {
             const tr = document.createElement('tr');
@@ -204,5 +207,6 @@ async function startFetch() {
 </script>
 
 </body>
+</html>
 </html>
 
