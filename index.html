@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台股14天歷史價抓取工具 (開源數據庫版)</title>
+    <title>台股14天歷史價抓取工具 (GitHub 終極穩定版)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -86,11 +86,11 @@
 <div class="container">
     <h2>台股歷程價格查詢</h2>
     <div class="search-box">
-        <input type="text" id="stockCode" placeholder="輸入上市/上櫃代號 (如: 2330, 8383)" value="8383">
+        <input type="text" id="stockCode" placeholder="輸入上市/上櫃代號 (如: 2330, 8383)" value="2330">
         <button onclick="startFetch()">抓取資料</button>
     </div>
     
-    <div id="loadingStatus" class="loading">正在連線至 GitHub 開源日線數據庫...</div>
+    <div id="loadingStatus" class="loading">正在向 GitHub 開源高流量數據庫請求數據...</div>
     <div id="marketInfo"></div>
     
     <table id="resultTable" style="display:none;">
@@ -125,43 +125,48 @@ async function startFetch() {
     table.style.display = 'none';
     loading.style.display = 'block';
 
-    // 獲取當前年份，用來決定讀取開源專案中的哪一個年度 JSON 檔
-    const currentYear = new Date().getFullYear();
-
-    // 串接開源社群維護的台股每日歷史數據節點 (這個來源是封裝在 GitHub 上的靜態資源，完全免除 CORS 問題)
-    // 格式為：https://raw.githubusercontent.com/jiandong-tw/taiwan-stock-data/main/data/daily/{year}/{stockCode}.json
-    const apiUrl = `https://cdn.jsdelivr.net/gh/jiandong-tw/taiwan-stock-data@main/data/daily/${currentYear}/${stockCode}.json`;
+    // 串接熱門開源台股數據庫 (r93052/TaiwanStockPrice) 的主分支 JSON 資料
+    const apiUrl = `https://cdn.jsdelivr.net/gh/r93052/TaiwanStockPrice@main/data/${stockCode}.json`;
 
     try {
-        // 使用 jsDelivr CDN 讀取 GitHub 檔案，速度最快且完全不鎖跨域
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
-            throw new Error('找不到該個股歷史檔案，可能代號錯誤或今年度尚無交易紀錄。');
+            throw new Error('找不到該個股歷史檔案，請確認代號是否正確。');
         }
         
-        const stockHistory = await response.json();
+        const resData = await response.json();
         
-        if (!stockHistory || stockHistory.length === 0) {
-            alert('該股票今年度無資料。');
+        // 該資料庫格式通常為物件，核心陣列在庫中的 key 可能因版本不同，這裡做防禦性檢查
+        // 如果抓下來直接是陣列，就用陣列；若是物件，試著尋找裡面的歷史欄位
+        const stockHistory = Array.isArray(resData) ? resData : (resData.price_array || resData.data || []);
+
+        if (stockHistory.length === 0) {
+            alert('此股票檔案內無有效價格紀錄。');
             loading.style.display = 'none';
             return;
         }
 
-        // 開源資料格式通常是舊到新，我們將其反轉（最新在最上），並擷取最新的 14 筆交易日
+        // 資料庫預設是舊到新，我們將其反轉，並擷取最新的 14 筆交易日
         const recent14Days = stockHistory.reverse().slice(0, 14);
 
-        marketInfo.innerHTML = `<span class="market-badge">數據來源：GitHub 開源台股日線庫</span>`;
+        marketInfo.innerHTML = `<span class="market-badge">數據來源：熱門開源台股日線清單</span>`;
         
         recent14Days.forEach(item => {
-            // 開源資料庫的欄位名稱通常為：date(日期), open(開盤), high(最高), low(最低), close(收盤)
+            // 讀取對應的欄位數據（通常支援大小寫或標準 open/high/low/close 物件）
+            const date = item.date || item.Date || '--';
+            const open = item.open || item.Open || '--';
+            const high = item.high || item.High || '--';
+            const low = item.low || item.Low || '--';
+            const close = item.close || item.Close || '--';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${item.date}</td>
-                <td style="color:#333;">${item.open}</td>
-                <td style="color:#d9383a;">${item.high}</td>
-                <td style="color:#2da44e;">${item.low}</td>
-                <td style="font-weight:bold;">${item.close}</td>
+                <td>${date}</td>
+                <td style="color:#333;">${open}</td>
+                <td style="color:#d9383a;">${high}</td>
+                <td style="color:#2da44e;">${low}</td>
+                <td style="font-weight:bold;">${close}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -171,7 +176,7 @@ async function startFetch() {
 
     } catch (error) {
         console.error(error);
-        alert('抓取失敗：' + error.message + '\n提示：請確認代號是否正確。若為剛開工年初，可能需等候數據庫同步更新。');
+        alert('抓取失敗：' + error.message);
         loading.style.display = 'none';
     }
 }
