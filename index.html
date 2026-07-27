@@ -1,41 +1,1059 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>PTT 看板瀏覽器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>無限畫布工作室 — Infinite Canvas Studio</title>
     <style>
-        body { max-width: 800px; margin: 0 auto; padding: 20px; font-family: 'Arial', sans-serif; }
-        .post-item { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        .push { color: green; }
-        .boo { color: red; }
+        /* ═══════════════════════════════════════════
+           1. CSS 變數與全域重置
+           ═══════════════════════════════════════════ */
+        :root {
+            --bg: #f0f2f5;
+            --panel: #ffffff;
+            --accent: #4f46e5;
+            --accent-light: #818cf8;
+            --accent-dark: #3730a3;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-full: 50%;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --font: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: var(--font); }
+
+        /* ═══════════════════════════════════════════
+           2. 畫布區域 — 支援平移與縮放
+           ═══════════════════════════════════════════ */
+        #canvas-viewport {
+            width: 100vw; height: calc(100vh - 72px);
+            overflow: hidden; position: relative;
+            background: var(--bg);
+            cursor: grab;
+        }
+        #canvas-viewport.panning { cursor: grabbing; }
+
+        #canvas {
+            width: 10000px; height: 10000px;
+            background-image:
+                radial-gradient(circle, #c4c8cf 1px, transparent 1px);
+            background-size: 30px 30px;
+            background-position: 0 0;
+            position: absolute;
+            transform-origin: 0 0;
+            transition: none;
+        }
+
+        /* ═══════════════════════════════════════════
+           3. 物件樣式 — 精緻卡片設計
+           ═══════════════════════════════════════════ */
+        .obj {
+            position: absolute;
+            min-width: 60px; min-height: 60px;
+            border: 2px solid transparent;
+            cursor: move;
+            display: flex; align-items: center; justify-content: center;
+            user-select: none;
+            border-radius: var(--radius-sm);
+            background: var(--panel);
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow var(--transition), border-color var(--transition);
+            padding: 4px;
+            overflow: hidden;
+        }
+        .obj:hover { box-shadow: var(--shadow-md); }
+        .obj.selected {
+            border: 2.5px solid var(--accent);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.15), var(--shadow-md);
+        }
+
+        /* 調整大小手柄 */
+        .resize-handle {
+            position: absolute; width: 12px; height: 12px;
+            background: var(--accent); border: 2px solid #fff;
+            border-radius: 3px; cursor: nwse-resize;
+            z-index: 10; display: none;
+        }
+        .obj.selected .resize-handle { display: block; }
+        .resize-handle.se { bottom: -6px; right: -6px; }
+
+        .obj .obj-content {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .obj img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; border-radius: 4px; }
+        .obj .text-content {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            word-break: break-word; text-align: center;
+            padding: 8px; line-height: 1.4;
+        }
+
+        /* ═══════════════════════════════════════════
+           4. 右側浮動控制面板
+           ═══════════════════════════════════════════ */
+        #floating-controls {
+            position: fixed; right: 20px; bottom: 160px;
+            display: flex; flex-direction: column; gap: 8px;
+            background: var(--panel);
+            padding: 10px;
+            border-radius: 28px;
+            box-shadow: var(--shadow-lg);
+            z-index: 999;
+            border: 1px solid var(--border);
+        }
+        .btn-ctrl {
+            width: 44px; height: 44px; border-radius: var(--radius-full);
+            background: transparent; color: var(--text-secondary);
+            border: none; font-size: 18px;
+            cursor: pointer; transition: all var(--transition);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-ctrl:hover { background: var(--accent); color: #fff; transform: scale(1.1); }
+        .btn-ctrl:active { transform: scale(0.95); }
+
+        /* 縮放指示器 */
+        #zoom-indicator {
+            position: fixed; right: 20px; bottom: 340px;
+            background: var(--panel); color: var(--text-primary);
+            padding: 6px 14px; border-radius: 20px;
+            font-size: 13px; font-weight: 600;
+            box-shadow: var(--shadow-md); z-index: 999;
+            border: 1px solid var(--border);
+            transition: opacity var(--transition);
+        }
+
+        /* ═══════════════════════════════════════════
+           5. 底部工具列
+           ═══════════════════════════════════════════ */
+        #toolbar {
+            position: fixed; bottom: 0; width: 100%; height: 72px;
+            background: var(--panel);
+            display: flex; justify-content: center; align-items: center;
+            gap: 6px; padding: 0 16px;
+            border-top: 1px solid var(--border);
+            z-index: 1000;
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.04);
+        }
+        .tool-btn {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 11px; color: var(--text-secondary);
+            cursor: pointer; padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition); gap: 2px;
+        }
+        .tool-btn:hover { background: #f1f5f9; color: var(--accent); }
+        .tool-btn.active { background: rgba(79,70,229,0.08); color: var(--accent); font-weight: 600; }
+        .tool-btn.danger:hover { background: #fef2f2; color: var(--danger); }
+        .tool-btn .icon { font-size: 20px; }
+
+        /* ═══════════════════════════════════════════
+           6. 屬性面板（右側欄）
+           ═══════════════════════════════════════════ */
+        #properties-panel {
+            position: fixed; right: -280px; top: 0;
+            width: 280px; height: calc(100vh - 72px);
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            z-index: 998;
+            transition: right var(--transition);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        #properties-panel.open { right: 0; }
+
+        #properties-panel h3 {
+            margin: 0 0 16px; font-size: 15px;
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+        }
+        #properties-panel h3 .close-btn {
+            margin-left: auto; cursor: pointer;
+            font-size: 18px; color: var(--text-secondary);
+            background: none; border: none;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background var(--transition);
+        }
+        #properties-panel h3 .close-btn:hover { background: #f1f5f9; }
+
+        .prop-group {
+            margin-bottom: 16px;
+        }
+        .prop-group label {
+            display: block; font-size: 12px;
+            color: var(--text-secondary); margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .prop-group input[type="text"],
+        .prop-group input[type="number"],
+        .prop-group textarea,
+        .prop-group select {
+            width: 100%; padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px; font-family: var(--font);
+            outline: none; transition: border-color var(--transition);
+            background: #fafbfc;
+        }
+        .prop-group input:focus,
+        .prop-group textarea:focus,
+        .prop-group select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        .prop-group textarea { resize: vertical; min-height: 60px; }
+
+        .prop-row {
+            display: flex; gap: 8px;
+        }
+        .prop-row .prop-group { flex: 1; }
+
+        .color-picker-wrapper {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .color-picker-wrapper input[type="color"] {
+            width: 36px; height: 36px; border: 2px solid var(--border);
+            border-radius: var(--radius-sm); cursor: pointer;
+            padding: 2px;
+        }
+
+        .prop-divider {
+            height: 1px; background: var(--border);
+            margin: 16px 0;
+        }
+
+        .empty-state {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            height: 100%; color: var(--text-secondary);
+            text-align: center; gap: 8px;
+        }
+        .empty-state .icon { font-size: 40px; opacity: 0.3; }
+        .empty-state p { font-size: 13px; margin: 0; }
+
+        /* ═══════════════════════════════════════════
+           7. 工具列分隔線
+           ═══════════════════════════════════════════ */
+        .toolbar-divider {
+            width: 1px; height: 36px;
+            background: var(--border); margin: 0 4px;
+        }
+
+        /* ═══════════════════════════════════════════
+           8. Toast 通知
+           ═══════════════════════════════════════════ */
+        #toast-container {
+            position: fixed; top: 20px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            display: flex; flex-direction: column; gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            background: var(--panel); color: var(--text-primary);
+            padding: 10px 20px; border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg); font-size: 14px;
+            border-left: 4px solid var(--accent);
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+            pointer-events: auto;
+        }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* ═══════════════════════════════════════════
+           9. 回應式設計
+           ═══════════════════════════════════════════ */
+        @media (max-width: 600px) {
+            #floating-controls { right: 10px; bottom: 140px; padding: 8px; gap: 6px; }
+            .btn-ctrl { width: 38px; height: 38px; font-size: 16px; }
+            .tool-btn { padding: 6px 10px; }
+            #properties-panel { width: 100%; right: -100%; }
+        }
     </style>
 </head>
 <body>
-    <h1 id="board-title">載入中...</h1>
-    <div id="post-list"></div>
 
+    <!-- 畫布視窗（含平移與縮放） -->
+    <div id="canvas-viewport">
+        <div id="canvas"></div>
+    </div>
+
+    <!-- 縮放指示器 -->
+    <div id="zoom-indicator">100%</div>
+
+    <!-- 右側浮動控制面板 -->
+    <div id="floating-controls">
+        <button class="btn-ctrl" onclick="Canvas.zoomIn()" title="放大 (Ctrl +)">🔍+</button>
+        <button class="btn-ctrl" onclick="Canvas.zoomOut()" title="縮小 (Ctrl -)">🔍−</button>
+        <button class="btn-ctrl" onclick="Canvas.resetView()" title="重置視圖">🏠</button>
+        <div style="height:4px"></div>
+        <button class="btn-ctrl" onclick="Canvas.moveObj(-10, 0)" title="向左">◀</button>
+        <button class="btn-ctrl" onclick="Canvas.moveObj(0, -10)" title="向上">▲</button>
+        <button class="btn-ctrl" onclick="Canvas.moveObj(0, 10)" title="向下">▼</button>
+        <button class="btn-ctrl" onclick="Canvas.moveObj(10, 0)" title="向右">▶</button>
+    </div>
+
+    <!-- 屬性面板 -->
+    <div id="properties-panel">
+        <div id="prop-content">
+            <div class="empty-state" id="prop-empty">
+                <span class="icon">🖌️</span>
+                <p>選擇一個物件以編輯其屬性</p>
+            </div>
+            <div id="prop-form" style="display:none">
+                <h3>
+                    物件屬性
+                    <button class="close-btn" onclick="Properties.close()">&times;</button>
+                </h3>
+
+                <!-- 文字內容 -->
+                <div class="prop-group" id="prop-text-group">
+                    <label>文字內容</label>
+                    <textarea id="prop-text" oninput="Properties.updateText(this.value)"></textarea>
+                </div>
+
+                <!-- 位置與尺寸 -->
+                <div class="prop-divider"></div>
+                <label style="display:block; font-size:12px; color:var(--text-secondary); margin-bottom:8px; font-weight:500;">位置與尺寸</label>
+                <div class="prop-row">
+                    <div class="prop-group">
+                        <label>X</label>
+                        <input type="number" id="prop-x" onchange="Properties.updatePos()">
+                    </div>
+                    <div class="prop-group">
+                        <label>Y</label>
+                        <input type="number" id="prop-y" onchange="Properties.updatePos()">
+                    </div>
+                </div>
+                <div class="prop-row">
+                    <div class="prop-group">
+                        <label>寬度</label>
+                        <input type="number" id="prop-w" min="30" onchange="Properties.updateSize()">
+                    </div>
+                    <div class="prop-group">
+                        <label>高度</label>
+                        <input type="number" id="prop-h" min="30" onchange="Properties.updateSize()">
+                    </div>
+                </div>
+
+                <!-- 旋轉 -->
+                <div class="prop-group">
+                    <label>旋轉角度</label>
+                    <input type="number" id="prop-r" value="0" onchange="Properties.updateRotation()">
+                </div>
+
+                <!-- 字體大小 -->
+                <div class="prop-group" id="prop-fontsize-group">
+                    <label>字體大小 (px)</label>
+                    <input type="number" id="prop-fontsize" min="8" max="200" value="16" onchange="Properties.updateFontSize()">
+                </div>
+
+                <!-- 背景顏色 -->
+                <div class="prop-group">
+                    <label>背景顏色</label>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="prop-bgcolor" value="#ffffff" onchange="Properties.updateBgColor(this.value)">
+                        <span id="prop-bgcolor-label" style="font-size:13px;color:var(--text-secondary)">#ffffff</span>
+                    </div>
+                </div>
+
+                <!-- 文字顏色 -->
+                <div class="prop-group" id="prop-textcolor-group">
+                    <label>文字顏色</label>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="prop-textcolor" value="#333333" onchange="Properties.updateTextColor(this.value)">
+                        <span id="prop-textcolor-label" style="font-size:13px;color:var(--text-secondary)">#333333</span>
+                    </div>
+                </div>
+
+                <!-- 層級 -->
+                <div class="prop-divider"></div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-ctrl" style="flex:1;height:36px;font-size:13px;border-radius:8px;" onclick="Canvas.bringForward()" title="上移一層">⬆ 上移</button>
+                    <button class="btn-ctrl" style="flex:1;height:36px;font-size:13px;border-radius:8px;" onclick="Canvas.sendBackward()" title="下移一層">⬇ 下移</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部工具列 -->
+    <div id="toolbar">
+        <div class="tool-btn" onclick="Canvas.addText()">
+            <span class="icon">T</span>
+            <span>文字</span>
+        </div>
+        <div class="tool-btn" onclick="Canvas.addImage()">
+            <span class="icon">🖼️</span>
+            <span>圖片</span>
+        </div>
+        <div class="tool-btn" onclick="Canvas.addShape()">
+            <span class="icon">◼</span>
+            <span>形狀</span>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="tool-btn" onclick="Canvas.duplicateSelected()">
+            <span class="icon">⧉</span>
+            <span>複製</span>
+        </div>
+        <div class="tool-btn" onclick="Canvas.alignSelected()">
+            <span class="icon">⊞</span>
+            <span>置中</span>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="tool-btn danger" onclick="Canvas.deleteSelected()">
+            <span class="icon">🗑️</span>
+            <span>刪除</span>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="tool-btn" onclick="Canvas.undo()" title="復原 (Ctrl+Z)">
+            <span class="icon">↩</span>
+            <span>復原</span>
+        </div>
+        <div class="tool-btn" onclick="Canvas.redo()" title="重做 (Ctrl+Y)">
+            <span class="icon">↪</span>
+            <span>重做</span>
+        </div>
+    </div>
+
+    <!-- Toast 通知容器 -->
+    <div id="toast-container"></div>
+
+    <!-- ═══════════════════════════════════════════
+         JavaScript — 模組化架構
+         ═══════════════════════════════════════════ -->
     <script>
-        // 假設你的檔案存成 ptt_data.json
-        fetch('ptt_data.json')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('board-title').innerText = `看板：${data.board_name}`;
-                const container = document.getElementById('post-list');
-                
-                data.articles.forEach(post => {
-                    const div = document.createElement('div');
-                    div.className = 'post-item';
-                    div.innerHTML = `
-                        <h3><a href="${post.url}" target="_blank">${post.title}</a></h3>
-                        <p>時間：${post.publish_time} | 
-                           <span class="push">推: ${post.push_count}</span> / 
-                           <span class="boo">噓: ${post.boo_count}</span>
-                        </p>
-                    `;
-                    container.appendChild(div);
+    (function() {
+        'use strict';
+
+        /* ───────────────────────────────────────────
+           工具函式
+           ─────────────────────────────────────────── */
+        function $(id) { return document.getElementById(id); }
+        function toast(msg, type) {
+            const container = $('toast-container');
+            const el = document.createElement('div');
+            el.className = 'toast' + (type ? ' ' + type : '');
+            el.textContent = msg;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 2500);
+        }
+
+        function randomColor() {
+            const colors = ['#818cf8','#f472b6','#34d399','#fbbf24','#60a5fa','#a78bfa','#fb923c','#2dd4bf'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        /* ───────────────────────────────────────────
+           資料管理模組
+           ─────────────────────────────────────────── */
+        const Store = {
+            items: [],
+            selectedId: null,
+            history: [],
+            historyIndex: -1,
+            maxHistory: 50,
+
+            init() {
+                try {
+                    this.items = JSON.parse(localStorage.getItem('canvas_data') || '[]');
+                } catch(e) { this.items = []; }
+                this.saveSnapshot();
+            },
+
+            saveSnapshot() {
+                // 截斷未來的歷史（新的操作分支）
+                this.history = this.history.slice(0, this.historyIndex + 1);
+                this.history.push(JSON.parse(JSON.stringify(this.items)));
+                if (this.history.length > this.maxHistory) this.history.shift();
+                this.historyIndex = this.history.length - 1;
+            },
+
+            save() {
+                localStorage.setItem('canvas_data', JSON.stringify(this.items));
+                this.saveSnapshot();
+            },
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.items = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.selectedId = null;
+                    Canvas.render();
+                    Properties.render();
+                    toast('已復原', 'success');
+                } else {
+                    toast('無法復原', 'error');
+                }
+            },
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.items = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.selectedId = null;
+                    Canvas.render();
+                    Properties.render();
+                    toast('已重做', 'success');
+                } else {
+                    toast('無法重做', 'error');
+                }
+            }
+        };
+
+        /* ───────────────────────────────────────────
+           畫布模組 — 渲染、縮放、平移
+           ─────────────────────────────────────────── */
+        const Canvas = {
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+
+            init() {
+                this.viewport = $('canvas-viewport');
+                this.canvasEl = $('canvas');
+
+                // 初始位置：居中
+                const vw = this.viewport.clientWidth;
+                const vh = this.viewport.clientHeight;
+                this.panX = -(5000 - vw) / 2;
+                this.panY = -(5000 - vh) / 2;
+                this.updateTransform();
+
+                // 平移事件
+                this.viewport.addEventListener('mousedown', (e) => {
+                    if (e.target === this.viewport || e.target === this.canvasEl) {
+                        this.isPanning = true;
+                        this.panStartX = e.clientX - this.panX;
+                        this.panStartY = e.clientY - this.panY;
+                        this.viewport.classList.add('panning');
+                    }
                 });
-            });
+                window.addEventListener('mousemove', (e) => {
+                    if (this.isPanning) {
+                        this.panX = e.clientX - this.panStartX;
+                        this.panY = e.clientY - this.panStartY;
+                        this.updateTransform();
+                    }
+                    if (this.isDragging) Drag.move(e);
+                    if (this.isResizing) Drag.resize(e);
+                });
+                window.addEventListener('mouseup', () => {
+                    if (this.isPanning) {
+                        this.isPanning = false;
+                        this.viewport.classList.remove('panning');
+                    }
+                    if (this.isDragging) Drag.end();
+                    if (this.isResizing) Drag.endResize();
+                });
+
+                // 滾輪縮放
+                this.viewport.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    this.zoomTo(this.zoom * delta, e.clientX, e.clientY);
+                }, { passive: false });
+
+                // 鍵盤事件
+                window.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); Store.undo(); }
+                    if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); Store.redo(); }
+                    if (e.ctrlKey && e.key === 'd') { e.preventDefault(); Canvas.duplicateSelected(); }
+                    if (e.key === 'Delete' || e.key === 'Backspace') {
+                        // 避免在輸入框中刪除
+                        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                        Canvas.deleteSelected();
+                    }
+                    if (e.key === 'Escape') { Canvas.deselectAll(); Properties.close(); }
+                });
+            },
+
+            updateTransform() {
+                this.canvasEl.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+                $('zoom-indicator').textContent = Math.round(this.zoom * 100) + '%';
+            },
+
+            zoomTo(newZoom, cx, cy) {
+                newZoom = Math.max(0.1, Math.min(5, newZoom));
+                // 以滑鼠位置為中心縮放
+                if (cx !== undefined && cy !== undefined) {
+                    this.panX = cx - (cx - this.panX) * (newZoom / this.zoom);
+                    this.panY = cy - (cy - this.panY) * (newZoom / this.zoom);
+                }
+                this.zoom = newZoom;
+                this.updateTransform();
+            },
+
+            zoomIn() { this.zoomTo(this.zoom * 1.2); },
+            zoomOut() { this.zoomTo(this.zoom / 1.2); },
+
+            resetView() {
+                this.zoom = 1;
+                const vw = this.viewport.clientWidth;
+                const vh = this.viewport.clientHeight;
+                this.panX = -(5000 - vw) / 2;
+                this.panY = -(5000 - vh) / 2;
+                this.updateTransform();
+                toast('視圖已重置');
+            },
+
+            /* 物件操作 */
+            render() {
+                this.canvasEl.innerHTML = '';
+                Store.items.forEach((item, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'obj' + (Store.selectedId === index ? ' selected' : '');
+                    el.dataset.index = index;
+                    el.style.left = item.x + 'px';
+                    el.style.top = item.y + 'px';
+                    el.style.width = item.w + 'px';
+                    el.style.height = item.h + 'px';
+                    el.style.transform = `rotate(${item.r || 0}deg)`;
+                    el.style.zIndex = item.z || (index + 1);
+                    if (item.bgcolor) el.style.background = item.bgcolor;
+
+                    const content = document.createElement('div');
+                    content.className = 'obj-content';
+
+                    if (item.type === 'text') {
+                        const span = document.createElement('div');
+                        span.className = 'text-content';
+                        span.textContent = item.content;
+                        span.style.color = item.textcolor || '#333333';
+                        span.style.fontSize = (item.fontsize || 16) + 'px';
+                        content.appendChild(span);
+                    } else if (item.type === 'image') {
+                        const img = document.createElement('img');
+                        img.src = item.content;
+                        img.alt = '';
+                        content.appendChild(img);
+                    } else if (item.type === 'shape') {
+                        content.style.background = item.bgcolor || randomColor();
+                        content.style.borderRadius = item.shape === 'circle' ? '50%' : (item.shape === 'rounded' ? '20%' : '0');
+                    }
+
+                    el.appendChild(content);
+
+                    // 調整大小手柄
+                    const handle = document.createElement('div');
+                    handle.className = 'resize-handle se';
+                    handle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        Canvas.isResizing = true;
+                        Drag.startResize(index, e);
+                    });
+                    el.appendChild(handle);
+
+                    // 點擊選擇
+                    el.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        Store.selectedId = index;
+                        Canvas.render();
+                        Properties.render();
+                        Drag.start(index, e);
+                    });
+
+                    // 雙擊編輯文字
+                    el.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        if (item.type === 'text') {
+                            const newText = prompt('編輯文字：', item.content);
+                            if (newText !== null) {
+                                item.content = newText;
+                                Store.save();
+                                this.render();
+                                Properties.render();
+                            }
+                        }
+                    });
+
+                    this.canvasEl.appendChild(el);
+                });
+            },
+
+            deselectAll() {
+                Store.selectedId = null;
+                this.render();
+                Properties.render();
+            },
+
+            /* 新增物件 */
+            addText() {
+                const text = prompt('輸入文字：');
+                if (!text) return;
+                const item = {
+                    type: 'text', content: text,
+                    x: -this.panX + 200 + Math.random()*100,
+                    y: -this.panY + 200 + Math.random()*100,
+                    w: 200, h: 60, r: 0,
+                    fontsize: 18, textcolor: '#333333', bgcolor: '#ffffff',
+                    z: Store.items.length + 1
+                };
+                Store.items.push(item);
+                Store.selectedId = Store.items.length - 1;
+                Store.save();
+                this.render();
+                Properties.render();
+                toast('已新增文字');
+            },
+
+            addImage() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const item = {
+                            type: 'image', content: ev.target.result,
+                            x: -this.panX + 300 + Math.random()*100,
+                            y: -this.panY + 300 + Math.random()*100,
+                            w: 200, h: 200, r: 0,
+                            bgcolor: '#ffffff',
+                            z: Store.items.length + 1
+                        };
+                        Store.items.push(item);
+                        Store.selectedId = Store.items.length - 1;
+                        Store.save();
+                        this.render();
+                        Properties.render();
+                        toast('已新增圖片');
+                    };
+                    reader.readAsDataURL(file);
+                };
+                input.click();
+            },
+
+            addShape() {
+                const shapes = ['square', 'circle', 'rounded'];
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                const color = randomColor();
+                const item = {
+                    type: 'shape', shape: shape,
+                    x: -this.panX + 250 + Math.random()*100,
+                    y: -this.panY + 250 + Math.random()*100,
+                    w: 120, h: 120, r: 0,
+                    bgcolor: color,
+                    z: Store.items.length + 1
+                };
+                Store.items.push(item);
+                Store.selectedId = Store.items.length - 1;
+                Store.save();
+                this.render();
+                Properties.render();
+                toast('已新增形狀');
+            },
+
+            /* 物件操作 */
+            moveObj(dx, dy) {
+                if (Store.selectedId === null) return;
+                const item = Store.items[Store.selectedId];
+                item.x += dx;
+                item.y += dy;
+                Store.save();
+                this.render();
+                Properties.render();
+            },
+
+            bringForward() {
+                if (Store.selectedId === null) return;
+                const item = Store.items[Store.selectedId];
+                const currentZ = item.z || (Store.selectedId + 1);
+                // 找到最大 z
+                let maxZ = 0;
+                Store.items.forEach(i => { if ((i.z || 0) > maxZ) maxZ = i.z || 0; });
+                item.z = maxZ + 1;
+                Store.save();
+                this.render();
+                toast('已上移一層');
+            },
+
+            sendBackward() {
+                if (Store.selectedId === null) return;
+                const item = Store.items[Store.selectedId];
+                let minZ = Infinity;
+                Store.items.forEach(i => { if ((i.z || 0) < minZ) minZ = i.z || 0; });
+                item.z = Math.max(0, (item.z || (Store.selectedId + 1)) - 1);
+                Store.save();
+                this.render();
+                toast('已下移一層');
+            },
+
+            duplicateSelected() {
+                if (Store.selectedId === null) { toast('請先選擇物件', 'error'); return; }
+                const src = Store.items[Store.selectedId];
+                const copy = JSON.parse(JSON.stringify(src));
+                copy.x += 30;
+                copy.y += 30;
+                copy.z = (Store.items.reduce((m, i) => Math.max(m, i.z || 0), 0)) + 1;
+                Store.items.push(copy);
+                Store.selectedId = Store.items.length - 1;
+                Store.save();
+                this.render();
+                Properties.render();
+                toast('已複製');
+            },
+
+            alignSelected() {
+                if (Store.selectedId === null) { toast('請先選擇物件', 'error'); return; }
+                const item = Store.items[Store.selectedId];
+                // 將物件置中於目前視圖
+                const vw = this.viewport.clientWidth;
+                const vh = this.viewport.clientHeight;
+                item.x = (-this.panX + vw / 2 - item.w / 2) / this.zoom;
+                item.y = (-this.panY + vh / 2 - item.h / 2) / this.zoom;
+                Store.save();
+                this.render();
+                Properties.render();
+                toast('已置中');
+            },
+
+            deleteSelected() {
+                if (Store.selectedId === null) { toast('請先選擇物件', 'error'); return; }
+                Store.items.splice(Store.selectedId, 1);
+                Store.selectedId = null;
+                Store.save();
+                this.render();
+                Properties.render();
+                toast('已刪除', 'error');
+            },
+
+            undo() { Store.undo(); },
+            redo() { Store.redo(); },
+
+            /* 內部狀態 */
+            isDragging: false,
+            isResizing: false,
+        };
+
+        /* ───────────────────────────────────────────
+           拖曳模組
+           ─────────────────────────────────────────── */
+        const Drag = {
+            dragIndex: -1,
+            startX: 0, startY: 0,
+            origX: 0, origY: 0,
+            resizeIndex: -1,
+
+            start(index, e) {
+                Canvas.isDragging = true;
+                this.dragIndex = index;
+                this.startX = e.clientX;
+                this.startY = e.clientY;
+                const item = Store.items[index];
+                this.origX = item.x;
+                this.origY = item.y;
+            },
+
+            move(e) {
+                const item = Store.items[this.dragIndex];
+                if (!item) return;
+                const dx = (e.clientX - this.startX) / Canvas.zoom;
+                const dy = (e.clientY - this.startY) / Canvas.zoom;
+                item.x = this.origX + dx;
+                item.y = this.origY + dy;
+                // 即時更新 DOM 以提升效能（不重新渲染全部）
+                const el = Canvas.canvasEl.querySelector(`.obj[data-index="${this.dragIndex}"]`);
+                if (el) {
+                    el.style.left = item.x + 'px';
+                    el.style.top = item.y + 'px';
+                }
+            },
+
+            end() {
+                Canvas.isDragging = false;
+                if (this.dragIndex >= 0) {
+                    Store.save();
+                    Properties.render();
+                }
+                this.dragIndex = -1;
+            },
+
+            startResize(index, e) {
+                Canvas.isResizing = true;
+                this.resizeIndex = index;
+                this.startX = e.clientX;
+                this.startY = e.clientY;
+                const item = Store.items[index];
+                this.origW = item.w;
+                this.origH = item.h;
+            },
+
+            resize(e) {
+                const item = Store.items[this.resizeIndex];
+                if (!item) return;
+                const dx = (e.clientX - this.startX) / Canvas.zoom;
+                const dy = (e.clientY - this.startY) / Canvas.zoom;
+                item.w = Math.max(30, this.origW + dx);
+                item.h = Math.max(30, this.origH + dy);
+                const el = Canvas.canvasEl.querySelector(`.obj[data-index="${this.resizeIndex}"]`);
+                if (el) {
+                    el.style.width = item.w + 'px';
+                    el.style.height = item.h + 'px';
+                }
+            },
+
+            endResize() {
+                Canvas.isResizing = false;
+                if (this.resizeIndex >= 0) {
+                    Store.save();
+                    Properties.render();
+                }
+                this.resizeIndex = -1;
+            }
+        };
+
+        /* ───────────────────────────────────────────
+           屬性面板模組
+           ─────────────────────────────────────────── */
+        const Properties = {
+            render() {
+                const panel = $('properties-panel');
+                if (Store.selectedId === null) {
+                    $('prop-empty').style.display = 'flex';
+                    $('prop-form').style.display = 'none';
+                    panel.classList.remove('open');
+                    return;
+                }
+
+                const item = Store.items[Store.selectedId];
+                panel.classList.add('open');
+                $('prop-empty').style.display = 'none';
+                $('prop-form').style.display = 'block';
+
+                // 文字內容
+                const textGroup = $('prop-text-group');
+                if (item.type === 'text') {
+                    $('prop-text').value = item.content;
+                    textGroup.style.display = 'block';
+                } else {
+                    textGroup.style.display = 'none';
+                }
+
+                $('prop-x').value = Math.round(item.x);
+                $('prop-y').value = Math.round(item.y);
+                $('prop-w').value = Math.round(item.w);
+                $('prop-h').value = Math.round(item.h);
+                $('prop-r').value = item.r || 0;
+
+                // 字體大小
+                const fontSizeGroup = $('prop-fontsize-group');
+                if (item.type === 'text') {
+                    $('prop-fontsize').value = item.fontsize || 16;
+                    fontSizeGroup.style.display = 'block';
+                } else {
+                    fontSizeGroup.style.display = 'none';
+                }
+
+                // 顏色
+                $('prop-bgcolor').value = item.bgcolor || '#ffffff';
+                $('prop-bgcolor-label').textContent = item.bgcolor || '#ffffff';
+
+                const textColorGroup = $('prop-textcolor-group');
+                if (item.type === 'text' || item.type === 'shape') {
+                    $('prop-textcolor').value = item.textcolor || '#333333';
+                    $('prop-textcolor-label').textContent = item.textcolor || '#333333';
+                    textColorGroup.style.display = 'block';
+                } else {
+                    textColorGroup.style.display = 'none';
+                }
+            },
+
+            close() {
+                $('properties-panel').classList.remove('open');
+            },
+
+            updateText(val) {
+                if (Store.selectedId === null) return;
+                Store.items[Store.selectedId].content = val;
+                Store.save();
+                Canvas.render();
+            },
+
+            updatePos() {
+                if (Store.selectedId === null) return;
+                const item = Store.items[Store.selectedId];
+                item.x = parseFloat($('prop-x').value) || 0;
+                item.y = parseFloat($('prop-y').value) || 0;
+                Store.save();
+                Canvas.render();
+            },
+
+            updateSize() {
+                if (Store.selectedId === null) return;
+                const item = Store.items[Store.selectedId];
+                item.w = Math.max(30, parseFloat($('prop-w').value) || 60);
+                item.h = Math.max(30, parseFloat($('prop-h').value) || 60);
+                Store.save();
+                Canvas.render();
+            },
+
+            updateRotation() {
+                if (Store.selectedId === null) return;
+                Store.items[Store.selectedId].r = parseFloat($('prop-r').value) || 0;
+                Store.save();
+                Canvas.render();
+            },
+
+            updateFontSize() {
+                if (Store.selectedId === null) return;
+                Store.items[Store.selectedId].fontsize = parseInt($('prop-fontsize').value) || 16;
+                Store.save();
+                Canvas.render();
+            },
+
+            updateBgColor(val) {
+                if (Store.selectedId === null) return;
+                Store.items[Store.selectedId].bgcolor = val;
+                $('prop-bgcolor-label').textContent = val;
+                Store.save();
+                Canvas.render();
+            },
+
+            updateTextColor(val) {
+                if (Store.selectedId === null) return;
+                Store.items[Store.selectedId].textcolor = val;
+                $('prop-textcolor-label').textContent = val;
+                Store.save();
+                Canvas.render();
+            }
+        };
+
+        /* ───────────────────────────────────────────
+           初始化
+           ─────────────────────────────────────────── */
+        Store.init();
+        Canvas.init();
+        Canvas.render();
+        Properties.render();
+
+    })();
     </script>
 </body>
 </html>
-
