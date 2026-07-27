@@ -9,764 +9,189 @@
             --primary: #5151e5;
             --primary-light: #ede9fe;
             --danger: #e11d48;
-            --danger-light: #fee2e2;
-            --success: #059669;
-            --success-light: #d1fae5;
             --bg-main: #f8f7f5;
             --bg-card: #ffffff;
             --text-main: #1e293b;
             --text-muted: #94a3b8;
             --border: #f1f5f9;
-            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-            --radius: 14px;
+            --grid-cols: 4; /* 預設 4 欄 */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Helvetica Neue", sans-serif;
-            background: var(--bg-main);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; }
 
-        .container {
-            width: 100%;
-            max-width: 540px;
-            background: var(--bg-card);
-            min-height: 100vh;
-            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
-            display: flex;
-            flex-direction: column;
-        }
+        .container { width: 100%; max-width: 540px; background: var(--bg-card); min-height: 100vh; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
 
-        .header {
-            padding: 18px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg-card);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .header h2 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-        }
+        .header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .header h2 { font-size: 1.25rem; font-weight: 700; }
 
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+        .controls { padding: 10px 20px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); }
+        select, button { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: white; font-size: 0.85rem; cursor: pointer; }
+        
+        .grid-toggles { display: flex; gap: 4px; }
+        .grid-btn { padding: 5px 8px; font-weight: 600; }
+        .grid-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .view-toggle {
-            display: flex;
-            background: #f1f5f9;
-            border-radius: 10px;
-            padding: 3px;
-            gap: 2px;
-        }
-        .view-btn {
-            border: none;
-            background: transparent;
-            width: 38px;
-            height: 34px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.05rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            color: var(--text-muted);
-        }
-        .view-btn.active {
-            background: white;
-            color: var(--primary);
-            box-shadow: var(--shadow);
-        }
-        .view-btn:hover:not(.active) {
-            color: var(--text-main);
-        }
+        .content-area { flex: 1; padding: 16px; }
+        
+        /* 動態 Grid */
+        .book-grid { display: grid; grid-template-columns: repeat(var(--grid-cols), 1fr); gap: 12px; }
+        
+        .book-card { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s; }
+        .book-card:hover { transform: scale(1.02); }
+        
+        .cover-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; }
+        
+        .card-info { padding: 10px; }
+        .card-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .progress-bar { width: 100%; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); }
 
-        .add-btn {
-            width: 38px;
-            height: 38px;
-            border: none;
-            border-radius: 10px;
-            background: var(--primary);
-            color: white;
-            font-size: 1.25rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.15s, box-shadow 0.15s;
-            margin-left: 6px;
-        }
-        .add-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(81,81,229,0.3);
-        }
+        /* 極簡模式 (針對 3+ 欄位) */
+        .compact .card-info { display: none; }
+        .compact .cover-img { aspect-ratio: 3/4; }
 
-        .stats-bar {
-            display: flex;
-            gap: 12px;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-        }
-        .stat-item {
-            flex: 1;
-            background: #f8f7f5;
-            border-radius: 10px;
-            padding: 12px;
-            text-align: center;
-        }
-        .stat-num {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-        .stat-label {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
+        .add-btn { width: 40px; height: 40px; border: none; border-radius: 10px; background: var(--primary); color: white; cursor: pointer; }
 
-        .content-area {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        /* Grid View */
-        .book-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 14px;
-            padding: 16px;
-        }
-        .book-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.18s, box-shadow 0.18s;
-        }
-        .book-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        }
-        .cover-img {
-            width: 100%;
-            height: 170px;
-            object-fit: cover;
-            background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-        .card-info { padding: 12px; }
-        .card-title {
-            font-weight: 600;
-            font-size: 0.88rem;
-            margin-bottom: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: #f1f5f9;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 6px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--primary);
-            border-radius: 3px;
-            transition: width 0.4s ease;
-        }
-        .progress-fill.done { background: var(--success); }
-        .card-meta {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        /* List View */
-        .book-list {
-            display: flex;
-            flex-direction: column;
-            padding: 16px;
-            gap: 10px;
-        }
-        .book-row {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 14px;
-            cursor: pointer;
-            transition: transform 0.18s, box-shadow 0.18s;
-        }
-        .book-row:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-        }
-        .row-cover {
-            width: 52px;
-            height: 72px;
-            border-radius: 8px;
-            object-fit: cover;
-            background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
-            flex-shrink: 0;
-        }
-        .row-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .row-title {
-            font-weight: 600;
-            font-size: 0.92rem;
-            margin-bottom: 6px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .row-progress-bar {
-            width: 100%;
-            height: 5px;
-            background: #f1f5f9;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 5px;
-        }
-        .row-progress-fill {
-            height: 100%;
-            background: var(--primary);
-            border-radius: 3px;
-            transition: width 0.4s ease;
-        }
-        .row-progress-fill.done { background: var(--success); }
-        .row-meta {
-            display: flex;
-            gap: 10px;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-        .row-arrow {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-
-        /* Calendar View */
-        .cal-container {
-            padding: 16px 20px;
-        }
-        .cal-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-        }
-        .cal-nav-btn {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: #f1f5f9;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .cal-month-label {
-            font-weight: 700;
-            font-size: 1rem;
-        }
-        .cal-weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            margin-bottom: 6px;
-            text-align: center;
-        }
-        .cal-weekday {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            padding: 4px 0;
-        }
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-        }
-        .cal-day {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            font-size: 0.82rem;
-            cursor: default;
-            transition: background 0.15s;
-        }
-        .cal-day.other-month {
-            color: #ddd;
-        }
-        .cal-day.has-read {
-            background: var(--primary);
-            color: white;
-            font-weight: 700;
-        }
-        .cal-day.today:not(.has-read) {
-            border: 2px solid var(--primary);
-            font-weight: 600;
-        }
-
-        /* Empty State */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
-        }
-        .empty-icon { font-size: 3rem; margin-bottom: 12px; }
-        .empty-text { font-size: 0.9rem; margin-bottom: 4px; }
-        .empty-hint { font-size: 0.75rem; color: var(--text-muted); }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.35);
-            z-index: 200;
-            display: none;
-            align-items: flex-end;
-        }
-        .modal-overlay.show {
-            display: flex;
-            animation: fadeIn 0.2s ease;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .action-sheet {
-            width: 100%;
-            background: var(--bg-card);
-            border-radius: 20px 20px 0 0;
-            padding: 20px;
-            max-height: 82vh;
-            overflow-y: auto;
-            animation: slideUp 0.25s ease;
-        }
-        .action-sheet h3 { font-size: 1.15rem; margin-bottom: 16px; }
-
-        .form-group { margin-bottom: 12px; }
-        .form-label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-family: inherit;
-            transition: border-color 0.2s;
-            background: #fafaf9;
-        }
-        input:focus { outline: none; border-color: var(--primary); background: white; }
-        input[type="file"] { font-size: 0.85rem; margin-bottom: 8px; }
-
-        .cover-preview {
-            width: 100%;
-            height: 140px;
-            border-radius: 10px;
-            object-fit: cover;
-            background: #f1f5f9;
-            margin-bottom: 10px;
-            display: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 13px;
-            border: none;
-            border-radius: 11px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            font-family: inherit;
-            transition: all 0.15s;
-        }
-        button:active { transform: scale(0.98); }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: #4343d1; }
-        .btn-outline { background: var(--primary-light); color: var(--primary); }
-        .btn-secondary { background: #f1f5f9; color: var(--text-main); }
-        .btn-danger { background: var(--danger-light); color: var(--danger); }
-        .btn-text { background: none; color: var(--text-muted); font-weight: 500; }
-        .btn-row { display: flex; gap: 8px; }
-        .btn-row button { flex: 1; }
-
-        .quick-page-group { display: flex; gap: 6px; }
-        .quick-page-group input { flex: 1; padding: 9px 12px; font-size: 0.85rem; }
-        .quick-page-group button { width: auto; padding: 9px 16px; font-size: 0.85rem; white-space: nowrap; }
-
-        .confirm-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-            z-index: 300; display: none; align-items: center; justify-content: center;
-        }
-        .confirm-overlay.show { display: flex; }
-        .confirm-dialog {
-            background: white; border-radius: 16px; padding: 24px;
-            width: 300px; text-align: center;
-        }
-        .confirm-dialog p { margin-bottom: 18px; font-size: 0.95rem; line-height: 1.5; }
-
-        ::-webkit-scrollbar { width: 0; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal-overlay.show { display: flex; }
+        .action-sheet { background: white; width: 90%; max-width: 400px; padding: 24px; border-radius: 16px; }
+        .form-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; }
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+        button.primary { flex: 1; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-
     <div class="header">
-        <h2 id="view-title">我的書櫃</h2>
-        <div class="header-actions">
-            <div class="view-toggle">
-                <button class="view-btn active" onclick="setView('grid')" id="btn-grid" title="九宮格">⊞</button>
-                <button class="view-btn" onclick="setView('list')" id="btn-list" title="列表">☰</button>
-                <button class="view-btn" onclick="setView('calendar')" id="btn-cal" title="月曆">📅</button>
-            </div>
-            <button class="add-btn" onclick="openModal('add-modal')">＋</button>
-        </div>
+        <h2>我的書櫃</h2>
+        <button class="add-btn" onclick="openModal()">＋</button>
     </div>
 
-    <div class="stats-bar" id="stats-bar">
-        <div class="stat-item">
-            <div class="stat-num" id="stat-total">0</div>
-            <div class="stat-label">藏書</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-num" id="stat-reading">0</div>
-            <div class="stat-label">閱讀中</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-num" id="stat-done">0</div>
-            <div class="stat-label">已讀完</div>
+    <div class="controls">
+        <select id="sort-select" onchange="applySort()">
+            <option value="newest">最新加入</option>
+            <option value="title">按書名排序</option>
+            <option value="progress">按閱讀進度</option>
+        </select>
+        <div class="grid-toggles">
+            <button class="grid-btn" onclick="setCols(2)">2</button>
+            <button class="grid-btn" onclick="setCols(3)">3</button>
+            <button class="grid-btn active" onclick="setCols(4)" id="btn-4">4</button>
+            <button class="grid-btn" onclick="setCols(5)">5</button>
         </div>
     </div>
 
     <div class="content-area">
-        <div id="grid-view" class="book-grid"></div>
-        <div id="list-view" class="book-list" style="display:none;"></div>
-        <div id="cal-view" class="cal-container" style="display:none;"></div>
+        <div id="book-grid" class="book-grid"></div>
     </div>
 </div>
 
-<!-- 新增書籍 -->
-<div class="modal-overlay" id="add-modal">
+<!-- 新增/編輯視窗 -->
+<div class="modal-overlay" id="modal">
     <div class="action-sheet">
-        <h3>📚 新增書籍</h3>
-        <input type="file" id="b-cover-input" accept="image/*" onchange="previewCover(this)">
-        <img id="cover-preview-img" class="cover-preview">
+        <h3 id="modal-title">新增書籍</h3>
+        <input type="hidden" id="edit-id">
         <div class="form-group">
-            <label class="form-label">書名</label>
-            <input type="text" id="b-title" placeholder="例如：原子習慣">
-        </div>
-        <div class="form-group">
-            <label class="form-label">總頁數</label>
-            <input type="number" id="b-total" placeholder="例如：320" min="1">
-        </div>
-        <div class="btn-row" style="margin-top:8px;">
-            <button class="btn-secondary" onclick="closeModal('add-modal')">取消</button>
-            <button class="btn-primary" onclick="addBook()">確定新增</button>
-        </div>
-    </div>
-</div>
-
-<!-- 編輯書籍 -->
-<div class="modal-overlay" id="edit-modal">
-    <div class="action-sheet">
-        <h3>✏️ 編輯書籍</h3>
-        <div class="form-group">
-            <label class="form-label">書名</label>
-            <input type="text" id="edit-title">
+            <label>書名</label>
+            <input type="text" id="b-title">
         </div>
         <div class="form-group">
-            <label class="form-label">總頁數</label>
-            <input type="number" id="edit-total" min="1">
+            <label>總頁數</label>
+            <input type="number" id="b-total">
         </div>
-        <div class="form-group">
-            <label class="form-label">目前閱讀進度</label>
-            <div class="quick-page-group">
-                <input type="number" id="edit-current-read" placeholder="目前頁數">
-                <button class="btn-outline" onclick="quickSaveProgress()">更新</button>
-            </div>
+        <div class="form-group" id="current-read-group" style="display:none;">
+            <label>目前進度(頁)</label>
+            <input type="number" id="b-current">
         </div>
-        <button class="btn-primary" onclick="saveBookChanges()">💾 儲存修改</button>
-        <button class="btn-danger" onclick="confirmDelete()" style="margin-top:6px;">🗑 刪除書籍</button>
-        <button class="btn-text" onclick="closeModal('edit-modal')" style="margin-top:6px;">關閉</button>
-    </div>
-</div>
-
-<!-- 刪除確認 -->
-<div class="confirm-overlay" id="confirm-delete">
-    <div class="confirm-dialog">
-        <p>確定要刪除這本書嗎？<br><span style="color:var(--text-muted);font-size:0.8rem;">此操作無法復原</span></p>
         <div class="btn-row">
-            <button class="btn-secondary" onclick="closeConfirm()">取消</button>
-            <button class="btn-danger" onclick="deleteBook()">確定刪除</button>
+            <button onclick="closeModal()">取消</button>
+            <button class="primary" onclick="saveBook()">儲存</button>
         </div>
     </div>
 </div>
 
 <script>
     let books = JSON.parse(localStorage.getItem('my_books')) || [];
-    let currentEditId = null;
-    let currentView = 'grid';
-    let calYear, calMonth;
+    let currentCols = 4;
 
-    // ── View Toggle ──
-    function setView(view) {
-        currentView = view;
-        document.getElementById('grid-view').style.display = view === 'grid' ? 'grid' : 'none';
-        document.getElementById('list-view').style.display = view === 'list' ? 'flex' : 'none';
-        document.getElementById('cal-view').style.display = view === 'calendar' ? 'block' : 'none';
-        ['grid','list','calendar'].forEach(v => {
-            document.getElementById('btn-'+v).classList.toggle('active', v === view);
-        });
-        const titles = { grid: '我的書櫃', list: '藏書列表', calendar: '閱讀月曆' };
-        document.getElementById('view-title').innerText = titles[view];
-        if (view === 'calendar') renderCalendar();
-        else render();
+    function setCols(n) {
+        currentCols = n;
+        document.documentElement.style.setProperty('--grid-cols', n);
+        document.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        render();
     }
 
-    function openModal(id) {
-        document.getElementById(id).classList.add('show');
-        if (id === 'add-modal') {
-            document.getElementById('b-title').value = '';
-            document.getElementById('b-total').value = '';
-            document.getElementById('b-cover-input').value = '';
-            var p = document.getElementById('cover-preview-img');
-            p.style.display = 'none';
-            p.src = '';
-        }
-    }
-    function closeModal(id) {
-        document.getElementById(id).classList.remove('show');
-    }
-
-    function previewCover(input) {
-        var p = document.getElementById('cover-preview-img');
-        if (input.files && input.files[0]) {
-            var r = new FileReader();
-            r.onload = function(e) { p.src = e.target.result; p.style.display = 'block'; };
-            r.readAsDataURL(input.files[0]);
-        } else { p.style.display = 'none'; }
-    }
-
-    function confirmDelete() { document.getElementById('confirm-delete').classList.add('show'); }
-    function closeConfirm() { document.getElementById('confirm-delete').classList.remove('show'); }
-
-    function editBook(id) {
-        currentEditId = id;
-        var b = books.find(function(x) { return x.id === id; });
-        if (!b) return;
-        document.getElementById('edit-title').value = b.title;
-        document.getElementById('edit-total').value = b.total;
-        document.getElementById('edit-current-read').value = b.currentRead;
-        openModal('edit-modal');
-    }
-
-    function saveBookChanges() {
-        var b = books.find(function(x) { return x.id === currentEditId; });
-        if (!b) return;
-        b.title = document.getElementById('edit-title').value || b.title;
-        b.total = Math.max(1, parseInt(document.getElementById('edit-total').value) || b.total);
-        saveAndRender();
-        closeModal('edit-modal');
-    }
-
-    function quickSaveProgress() {
-        var b = books.find(function(x) { return x.id === currentEditId; });
-        if (!b) return;
-        var newRead = parseInt(document.getElementById('edit-current-read').value);
-        if (isNaN(newRead) || newRead < 0) return;
-        var today = new Date().toISOString().split('T')[0];
-        var delta = newRead - b.currentRead;
-        if (delta > 0) b.history.push({ date: today, pages: delta });
-        b.currentRead = newRead;
-        saveAndRender();
-    }
-
-    function deleteBook() {
-        books = books.filter(function(x) { return x.id !== currentEditId; });
-        saveAndRender();
-        closeConfirm();
-        closeModal('edit-modal');
-    }
-
-    function addBook() {
-        var title = document.getElementById('b-title').value.trim();
-        var total = Math.max(1, parseInt(document.getElementById('b-total').value) || 1);
-        if (!title) return alert('請輸入書名');
-        var fileInput = document.getElementById('b-cover-input');
-        if (fileInput.files && fileInput.files[0]) {
-            var reader = new FileReader();
-            reader.onload = function(e) { saveBook(title, total, e.target.result); };
-            reader.readAsDataURL(fileInput.files[0]);
-        } else { saveBook(title, total, null); }
-    }
-
-    function saveBook(title, total, coverData) {
-        books.push({ id: Date.now(), title: title, total: total, currentRead: 0, history: [], cover: coverData, createdAt: new Date().toISOString() });
-        saveAndRender();
-        closeModal('add-modal');
-    }
-
-    function saveAndRender() {
-        localStorage.setItem('my_books', JSON.stringify(books));
-        if (currentView === 'calendar') renderCalendar();
-        else render();
-    }
-
-    function updateStats() {
-        var total = books.length;
-        var done = books.filter(function(b) { return b.currentRead >= b.total && b.total > 0; }).length;
-        document.getElementById('stat-total').innerText = total;
-        document.getElementById('stat-reading').innerText = total - done;
-        document.getElementById('stat-done').innerText = done;
-    }
-
-    function renderGrid() {
-        var grid = document.getElementById('grid-view');
-        if (books.length === 0) {
-            grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📖</div><div class="empty-text">還沒有書籍</div><div class="empty-hint">點擊 ＋ 新增第一本書</div></div>';
-            document.getElementById('stats-bar').style.display = 'none';
-            return;
-        }
-        document.getElementById('stats-bar').style.display = 'flex';
-        grid.innerHTML = books.map(function(b) {
-            var pct = Math.min(100, Math.round((b.currentRead / b.total) * 100));
-            var done = pct >= 100;
-            return '<div class="book-card" onclick="editBook('+b.id+')">'+
-                '<img src="'+(b.cover||'')+'" class="cover-img" onerror="var n=this.nextElementSibling;this.style.display=\'none\';n.style.display=\'flex\'" alt="">'+
-                '<div class="cover-img" style="display:'+(b.cover?'none':'flex')+';">📘</div>'+
-                '<div class="card-info">'+
-                '<div class="card-title">'+escHtml(b.title)+'</div>'+
-                '<div class="progress-bar"><div class="progress-fill'+(done?' done':'')+'" style="width:'+pct+'%;"></div></div>'+
-                '<div class="card-meta"><span>'+(done?'✅ 已讀完':pct+'% 完成')+'</span><span>'+b.currentRead+'/'+b.total+' 頁</span></div>'+
-                '</div></div>';
-        }).join('');
-    }
-
-    function renderList() {
-        var list = document.getElementById('list-view');
-        if (books.length === 0) {
-            list.innerHTML = '<div class="empty-state"><div class="empty-icon">📖</div><div class="empty-text">還沒有書籍</div><div class="empty-hint">點擊 ＋ 新增第一本書</div></div>';
-            document.getElementById('stats-bar').style.display = 'none';
-            return;
-        }
-        document.getElementById('stats-bar').style.display = 'flex';
-        list.innerHTML = books.map(function(b) {
-            var pct = Math.min(100, Math.round((b.currentRead / b.total) * 100));
-            var done = pct >= 100;
-            return '<div class="book-row" onclick="editBook('+b.id+')">'+
-                '<img src="'+(b.cover||'')+'" class="row-cover" onerror="var n=this.nextElementSibling;this.style.display=\'none\';n.style.display=\'flex\'" alt="">'+
-                '<div style="width:52px;height:72px;border-radius:8px;background:linear-gradient(135deg,#e2e8f0,#f1f5f9);display:'+(b.cover?'none':'flex')+';align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">📘</div>'+
-                '<div class="row-info">'+
-                '<div class="row-title">'+escHtml(b.title)+'</div>'+
-                '<div class="row-progress-bar"><div class="row-progress-fill'+(done?' done':'')+'" style="width:'+pct+'%;"></div></div>'+
-                '<div class="row-meta"><span>'+b.currentRead+' / '+b.total+' 頁</span><span>'+(done?'✅ 已讀完':pct+'%')+'</span></div>'+
-                '</div><div class="row-arrow">›</div></div>';
-        }).join('');
-    }
-
-    function renderCalendar() {
-        var now = new Date();
-        if (!calYear) { calYear = now.getFullYear(); calMonth = now.getMonth(); }
-        document.getElementById('cal-view').innerHTML =
-            '<div class="cal-nav">'+
-            '<button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>'+
-            '<div class="cal-month-label">'+calYear+' 年 '+(calMonth+1)+' 月</div>'+
-            '<button class="cal-nav-btn" onclick="changeMonth(1)">›</button></div>'+
-            '<div class="cal-weekdays">'+
-            '<div class="cal-weekday">日</div><div class="cal-weekday">一</div><div class="cal-weekday">二</div>'+
-            '<div class="cal-weekday">三</div><div class="cal-weekday">四</div><div class="cal-weekday">五</div><div class="cal-weekday">六</div></div>'+
-            '<div class="calendar-grid" id="calendar-body"></div>';
-
-        var body = document.getElementById('calendar-body');
-        var daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-        var firstDay = new Date(calYear, calMonth, 1).getDay();
-
-        var readDates = {};
-        books.forEach(function(b) { b.history.forEach(function(h) {
-            var d = new Date(h.date);
-            if (d.getFullYear()===calYear && d.getMonth()===calMonth) {
-                readDates[d.getDate()] = (readDates[d.getDate()]||0) + h.pages;
-            }
-        });});
-
-        var todayD = now.getFullYear()===calYear && now.getMonth()===calMonth ? now.getDate() : null;
-        var prevDays = new Date(calYear, calMonth, 0).getDate();
-
-        for (var i=firstDay-1; i>=0; i--) {
-            body.appendChild(makeDay(prevDays-i, true, 0, false));
-        }
-        for (var i=1; i<=daysInMonth; i++) {
-            body.appendChild(makeDay(i, false, readDates[i]||0, todayD===i));
-        }
-    }
-
-    function makeDay(day, other, pages, isToday) {
-        var div = document.createElement('div');
-        div.className = 'cal-day' + (other?' other-month':'') + (pages?' has-read':'') + (isToday?' today':'');
-        div.innerText = day;
-        if (pages) div.title = '閱讀 '+pages+' 頁';
-        return div;
-    }
-
-    function changeMonth(d) {
-        calMonth += d;
-        if (calMonth<0) { calMonth=11; calYear--; }
-        if (calMonth>11) { calMonth=0; calYear++; }
-        renderCalendar();
+    function applySort() {
+        const val = document.getElementById('sort-select').value;
+        if (val === 'title') books.sort((a,b) => a.title.localeCompare(b.title));
+        else if (val === 'progress') books.sort((a,b) => (b.currentRead/b.total) - (a.currentRead/a.total));
+        else books.sort((a,b) => b.id - a.id);
+        render();
     }
 
     function render() {
-        updateStats();
-        renderGrid();
-        renderList();
+        const grid = document.getElementById('book-grid');
+        grid.innerHTML = '';
+        const isCompact = currentCols >= 3;
+        
+        books.forEach(b => {
+            const pct = Math.round((b.currentRead / b.total) * 100);
+            const card = document.createElement('div');
+            card.className = 'book-card' + (isCompact ? ' compact' : '');
+            card.onclick = () => openModal(b.id);
+            card.innerHTML = `
+                <div class="cover-img">📘</div>
+                <div class="card-info">
+                    <div class="card-title">${b.title}</div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
     }
 
-    function escHtml(s) {
-        var d = document.createElement('div');
-        d.innerText = s;
-        return d.innerHTML;
+    function openModal(id = null) {
+        const modal = document.getElementById('modal');
+        modal.classList.add('show');
+        if (id) {
+            const b = books.find(x => x.id === id);
+            document.getElementById('modal-title').innerText = '編輯書籍';
+            document.getElementById('edit-id').value = b.id;
+            document.getElementById('b-title').value = b.title;
+            document.getElementById('b-total').value = b.total;
+            document.getElementById('b-current').value = b.currentRead;
+            document.getElementById('current-read-group').style.display = 'block';
+        } else {
+            document.getElementById('modal-title').innerText = '新增書籍';
+            document.getElementById('edit-id').value = '';
+            document.getElementById('b-title').value = '';
+            document.getElementById('b-total').value = '';
+            document.getElementById('current-read-group').style.display = 'none';
+        }
+    }
+
+    function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+    function saveBook() {
+        const id = document.getElementById('edit-id').value;
+        const title = document.getElementById('b-title').value;
+        const total = parseInt(document.getElementById('b-total').value);
+        
+        if (id) {
+            const b = books.find(x => x.id == id);
+            b.title = title;
+            b.total = total;
+            b.currentRead = parseInt(document.getElementById('b-current').value);
+        } else {
+            books.push({ id: Date.now(), title, total, currentRead: 0 });
+        }
+        localStorage.setItem('my_books', JSON.stringify(books));
+        closeModal();
+        render();
     }
 
     render();
