@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <title>無限畫布工作室 v2</title>
+    <title>無限畫布工作室 v2 (已修復)</title>
     <style>
         :root {
             --bg: #eef1f5;
@@ -295,7 +295,7 @@
         const el=id(n);if(!el)return;
         el.addEventListener("input",()=>{
             if(S.sel==null)return;const it=S.items[S.sel];
-            const map={fi-t:"c",fi-x:"x",fi-y:"y",fi-w:"w",fi-h:"h",fi-r:"r",fi-fs:"fs",fi-bw:"bw"};
+            const map={"fi-t":"c", "fi-x":"x", "fi-y":"y", "fi-w":"w", "fi-h":"h", "fi-r":"r", "fi-fs":"fs", "fi-bw":"bw"};
             const k=map[n];
             if(k==="c"){it.c=el.value;S.save();V.rerender()}
             else if(k==="x"){it.x=+el.value||0;S.save();const e2=V.el.querySelector(`.o[data-i="${S.sel}"]`);if(e2)e2.style.left=it.x+"px"}
@@ -316,3 +316,4 @@
 </script>
 </body>
 </html>
+
