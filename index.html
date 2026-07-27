@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>書籍閱讀進度系統</title>
     <style>
-        :root { --primary: #5151e5; --bg-main: #fcfbfa; --bg-card: #ffffff; --text-main: #1e293b; --text-muted: #64748b; --border: #f1f5f9; }
+        :root { --primary: #5151e5; --danger: #e11d48; --bg-main: #fcfbfa; --bg-card: #ffffff; --text-main: #1e293b; --text-muted: #64748b; --border: #f1f5f9; }
         body { font-family: sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 550px; background: var(--bg-card); min-height: 100vh; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1); }
         .header { padding: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
         .tab-btn { border: none; background: none; font-size: 1.2rem; cursor: pointer; }
         
-        /* 網格佈局 */
         .book-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 15px; }
         .book-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s; }
         .book-card:hover { transform: scale(1.02); }
@@ -21,6 +20,12 @@
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: flex-end; }
         .modal-overlay.show { display: flex; }
         .action-sheet { width: 100%; background: var(--bg-card); border-radius: 20px 20px 0 0; padding: 20px; box-sizing: border-box; max-height: 80vh; overflow-y: auto; }
+        
+        input { width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; margin-top: 5px; font-weight: bold; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--border); color: var(--text-main); }
+        .btn-danger { background: #fee2e2; color: var(--danger); }
         
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
         .cal-day { height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem; }
@@ -40,7 +45,6 @@
 
     <div id="grid-view" class="book-grid"></div>
 
-    <!-- 月曆視圖 -->
     <div id="cal-view" style="display:none; padding:20px;">
         <div style="text-align:center; margin-bottom:10px;" id="cal-month-title"></div>
         <div class="calendar-grid" id="calendar-body"></div>
@@ -51,20 +55,34 @@
 <div class="modal-overlay" id="add-modal">
     <div class="action-sheet">
         <h3>新增書籍</h3>
-        <input type="file" id="b-cover-input" accept="image/*" style="margin-bottom:10px;">
-        <input type="text" id="b-title" placeholder="書籍名稱" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid var(--border); border-radius:8px;">
-        <input type="number" id="b-total" placeholder="總頁數" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid var(--border); border-radius:8px;">
-        <button onclick="addBook()" style="width:100%; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px;">確定新增</button>
-        <button onclick="closeModal('add-modal')" style="width:100%; margin-top:10px; background:none; border:none; color:var(--text-muted);">取消</button>
+        <input type="file" id="b-cover-input" accept="image/*">
+        <input type="text" id="b-title" placeholder="書籍名稱">
+        <input type="number" id="b-total" placeholder="總頁數">
+        <button class="btn-primary" onclick="addBook()">確定新增</button>
+        <button class="btn-secondary" onclick="closeModal('add-modal')">取消</button>
+    </div>
+</div>
+
+<!-- 編輯書籍 Modal (新增) -->
+<div class="modal-overlay" id="edit-modal">
+    <div class="action-sheet">
+        <h3 id="edit-header">編輯書籍</h3>
+        <input type="text" id="edit-title" placeholder="書名">
+        <input type="number" id="edit-total" placeholder="總頁數">
+        <button class="btn-primary" onclick="saveBookChanges()">儲存修改</button>
+        <button class="btn-secondary" onclick="prepareUpdateProgress()">紀錄今日閱讀</button>
+        <button class="btn-danger" onclick="deleteBook()">刪除書籍</button>
+        <button style="background:none; color:var(--text-muted); margin-top:10px;" onclick="closeModal('edit-modal')">關閉</button>
     </div>
 </div>
 
 <!-- 更新進度 Modal -->
 <div class="modal-overlay" id="update-modal">
     <div class="action-sheet">
-        <h3 id="update-title">更新進度</h3>
-        <input type="number" id="b-update-read" placeholder="目前閱讀頁數" style="width:100%; margin-bottom:20px; padding:10px; border:1px solid var(--border); border-radius:8px;">
-        <button onclick="saveProgress()" style="width:100%; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px;">紀錄今日閱讀</button>
+        <h3>更新進度</h3>
+        <input type="number" id="b-update-read" placeholder="目前閱讀頁數">
+        <button class="btn-primary" onclick="saveProgress()">儲存進度</button>
+        <button class="btn-secondary" onclick="closeModal('update-modal')">返回</button>
     </div>
 </div>
 
@@ -75,6 +93,42 @@
     function openModal(id) { document.getElementById(id).classList.add('show'); }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
+    // 點擊卡片觸發編輯
+    function editBook(id) {
+        currentEditId = id;
+        const b = books.find(x => x.id === id);
+        document.getElementById('edit-title').value = b.title;
+        document.getElementById('edit-total').value = b.total;
+        openModal('edit-modal');
+    }
+
+    // 儲存書籍編輯
+    function saveBookChanges() {
+        const b = books.find(x => x.id === currentEditId);
+        b.title = document.getElementById('edit-title').value;
+        b.total = parseInt(document.getElementById('edit-total').value) || 1;
+        localStorage.setItem('my_books', JSON.stringify(books));
+        closeModal('edit-modal');
+        render();
+    }
+
+    // 準備進入進度更新頁面
+    function prepareUpdateProgress() {
+        const b = books.find(x => x.id === currentEditId);
+        document.getElementById('b-update-read').value = b.currentRead;
+        closeModal('edit-modal');
+        openModal('update-modal');
+    }
+
+    function deleteBook() {
+        if(confirm('確定要刪除這本書嗎？')) {
+            books = books.filter(x => x.id !== currentEditId);
+            localStorage.setItem('my_books', JSON.stringify(books));
+            closeModal('edit-modal');
+            render();
+        }
+    }
+
     function addBook() {
         const title = document.getElementById('b-title').value;
         const total = parseInt(document.getElementById('b-total').value) || 1;
@@ -84,9 +138,7 @@
 
         if (fileInput.files && fileInput.files[0]) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                saveBook(title, total, e.target.result);
-            };
+            reader.onload = function(e) { saveBook(title, total, e.target.result); };
             reader.readAsDataURL(fileInput.files[0]);
         } else {
             saveBook(title, total, null);
@@ -94,33 +146,19 @@
     }
 
     function saveBook(title, total, coverData) {
-        books.push({ 
-            id: Date.now(), title, total, currentRead: 0, 
-            startDate: new Date().toISOString().split('T')[0], 
-            history: [], cover: coverData 
-        });
+        books.push({ id: Date.now(), title, total, currentRead: 0, history: [], cover: coverData });
         localStorage.setItem('my_books', JSON.stringify(books));
         closeModal('add-modal');
         render();
-    }
-
-    function editBook(id) {
-        currentEditId = id;
-        const b = books.find(x => x.id === id);
-        document.getElementById('update-title').innerText = "更新 " + b.title;
-        document.getElementById('b-update-read').value = b.currentRead;
-        openModal('update-modal');
     }
 
     function saveProgress() {
         const newRead = parseInt(document.getElementById('b-update-read').value);
         const b = books.find(x => x.id === currentEditId);
         const today = new Date().toISOString().split('T')[0];
-        
         const delta = newRead - b.currentRead;
         if(delta > 0) b.history.push({ date: today, pages: delta });
         b.currentRead = newRead;
-        
         localStorage.setItem('my_books', JSON.stringify(books));
         closeModal('update-modal');
         render();
