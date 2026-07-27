@@ -5,197 +5,1115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>書籍閱讀進度系統</title>
     <style>
+        /* ═══════════════════════════════════════════
+           Design Tokens
+        ═══════════════════════════════════════════ */
         :root {
             --primary: #5151e5;
             --primary-light: #ede9fe;
+            --primary-dark: #4343d1;
             --danger: #e11d48;
+            --danger-light: #fee2e2;
+            --success: #059669;
+            --success-light: #d1fae5;
             --bg-main: #f8f7f5;
             --bg-card: #ffffff;
             --text-main: #1e293b;
             --text-muted: #94a3b8;
             --border: #f1f5f9;
-            --grid-cols: 4; /* 預設 4 欄 */
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --radius: 14px;
+            --radius-sm: 10px;
+            --transition: 0.2s ease;
         }
 
+        /* ═══════════════════════════════════════════
+           Reset & Base
+        ═══════════════════════════════════════════ */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; }
 
-        .container { width: 100%; max-width: 540px; background: var(--bg-card); min-height: 100vh; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Helvetica Neue", sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
 
-        .header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .header h2 { font-size: 1.25rem; font-weight: 700; }
+        .container {
+            width: 100%;
+            max-width: 540px;
+            background: var(--bg-card);
+            min-height: 100vh;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+        }
 
-        .controls { padding: 10px 20px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); }
-        select, button { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: white; font-size: 0.85rem; cursor: pointer; }
-        
-        .grid-toggles { display: flex; gap: 4px; }
-        .grid-btn { padding: 5px 8px; font-weight: 600; }
-        .grid-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        /* ═══════════════════════════════════════════
+           Header
+        ═══════════════════════════════════════════ */
+        .header {
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-card);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
 
-        .content-area { flex: 1; padding: 16px; }
-        
-        /* 動態 Grid */
-        .book-grid { display: grid; grid-template-columns: repeat(var(--grid-cols), 1fr); gap: 12px; }
-        
-        .book-card { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s; }
-        .book-card:hover { transform: scale(1.02); }
-        
-        .cover-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; }
-        
-        .card-info { padding: 10px; }
-        .card-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .progress-bar { width: 100%; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--primary); }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
 
-        /* 極簡模式 (針對 3+ 欄位) */
-        .compact .card-info { display: none; }
-        .compact .cover-img { aspect-ratio: 3/4; }
+        /* ═══════════════════════════════════════════
+           View Toggle
+        ═══════════════════════════════════════════ */
+        .view-toggle {
+            display: flex;
+            background: #f1f5f9;
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            gap: 2px;
+        }
+        .view-btn {
+            border: none;
+            background: transparent;
+            width: 38px;
+            height: 34px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            color: var(--text-muted);
+        }
+        .view-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+        .view-btn:hover:not(.active) { color: var(--text-main); }
 
-        .add-btn { width: 40px; height: 40px; border: none; border-radius: 10px; background: var(--primary); color: white; cursor: pointer; }
+        .add-btn {
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--primary);
+            color: white;
+            font-size: 1.25rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s, box-shadow 0.15s;
+            margin-left: 6px;
+        }
+        .add-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(81,81,229,0.3);
+        }
 
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; z-index: 100; }
-        .modal-overlay.show { display: flex; }
-        .action-sheet { background: white; width: 90%; max-width: 400px; padding: 24px; border-radius: 16px; }
-        .form-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; }
-        .btn-row { display: flex; gap: 10px; margin-top: 20px; }
-        button.primary { flex: 1; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; }
+        /* ═══════════════════════════════════════════
+           Stats Bar
+        ═══════════════════════════════════════════ */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .stat-item {
+            flex: 1;
+            background: #f8f7f5;
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-num {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ═══════════════════════════════════════════
+           Content Area
+        ═══════════════════════════════════════════ */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* ═══════════════════════════════════════════
+           Grid View (九宮格)
+        ═══════════════════════════════════════════ */
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            padding: 16px;
+        }
+        .book-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.18s, box-shadow 0.18s;
+        }
+        .book-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .cover-img {
+            width: 100%;
+            height: 170px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .card-info { padding: 12px; }
+        .card-title {
+            font-weight: 600;
+            font-size: 0.88rem;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .progress-fill.done { background: var(--success); }
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* ═══════════════════════════════════════════
+           List View (列表)
+        ═══════════════════════════════════════════ */
+        .book-list {
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+        }
+        .book-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            cursor: pointer;
+            transition: transform 0.18s, box-shadow 0.18s;
+        }
+        .book-row:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+        .row-cover {
+            width: 52px;
+            height: 72px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+            flex-shrink: 0;
+        }
+        .row-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .row-title {
+            font-weight: 600;
+            font-size: 0.92rem;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .row-progress-bar {
+            width: 100%;
+            height: 5px;
+            background: #f1f5f9;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .row-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .row-progress-fill.done { background: var(--success); }
+        .row-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .row-arrow {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        /* ═══════════════════════════════════════════
+           Cover View (封面視圖)
+        ═══════════════════════════════════════════ */
+        .book-covers {
+            display: grid;
+            gap: 10px;
+            padding: 16px;
+        }
+        .book-covers.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .book-covers.cols-5 {
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            padding: 14px;
+        }
+
+        .cover-card {
+            position: relative;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+        }
+        .cover-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        /* 封面圖片 */
+        .cover-card .cover-photo {
+            width: 100%;
+            aspect-ratio: 3 / 4.2;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* 無封面時的佔位 */
+        .cover-card .cover-placeholder {
+            width: 100%;
+            aspect-ratio: 3 / 4.2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+        }
+        .book-covers.cols-5 .cover-card .cover-placeholder {
+            font-size: 1.1rem;
+        }
+
+        /* 覆蓋層（書名 + 進度） */
+        .cover-card .cover-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.75));
+            padding: 24px 8px 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+        .cover-card:hover .cover-overlay,
+        .cover-card:active .cover-overlay {
+            opacity: 1;
+        }
+        .cover-card .cover-overlay-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .book-covers.cols-5 .cover-card .cover-overlay-title {
+            font-size: 0.6rem;
+        }
+
+        /* 進度小條 */
+        .cover-card .cover-overlay-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .cover-card .cover-overlay-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+        .cover-card .cover-overlay-fill.progress { background: var(--primary); }
+        .cover-card .cover-overlay-fill.done { background: var(--success); }
+
+        /* 進度徽章（右上角） */
+        .cover-card .cover-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            font-size: 0.55rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 6px;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.2s;
+        }
+        .cover-card .cover-badge.done {
+            background: var(--success);
+        }
+
+        /* ═══════════════════════════════════════════
+           Calendar View (月曆)
+        ═══════════════════════════════════════════ */
+        .cal-container { padding: 16px 20px; }
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .cal-nav-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #f1f5f9;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cal-month-label {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .cal-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        .cal-weekday {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 4px 0;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            cursor: default;
+            transition: background 0.15s;
+        }
+        .cal-day.other-month { color: #ddd; }
+        .cal-day.has-read {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+        }
+        .cal-day.today:not(.has-read) {
+            border: 2px solid var(--primary);
+            font-weight: 600;
+        }
+
+        /* ═══════════════════════════════════════════
+           Empty State
+        ═══════════════════════════════════════════ */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-text { font-size: 0.9rem; margin-bottom: 4px; }
+        .empty-hint { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ═══════════════════════════════════════════
+           Modal
+        ═══════════════════════════════════════════ */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 200;
+            display: none;
+            align-items: flex-end;
+        }
+        .modal-overlay.show {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .action-sheet {
+            width: 100%;
+            background: var(--bg-card);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            max-height: 82vh;
+            overflow-y: auto;
+            animation: slideUp 0.25s ease;
+        }
+        .action-sheet h3 { font-size: 1.15rem; margin-bottom: 16px; }
+
+        .form-group { margin-bottom: 12px; }
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color var(--transition);
+            background: #fafaf9;
+        }
+        input:focus { outline: none; border-color: var(--primary); background: white; }
+        input[type="file"] { font-size: 0.85rem; margin-bottom: 8px; }
+
+        .cover-preview {
+            width: 100%;
+            height: 140px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: #f1f5f9;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 11px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: var(--primary-light); color: var(--primary); }
+        .btn-secondary { background: #f1f5f9; color: var(--text-main); }
+        .btn-danger { background: var(--danger-light); color: var(--danger); }
+        .btn-text { background: none; color: var(--text-muted); font-weight: 500; }
+        .btn-row { display: flex; gap: 8px; }
+        .btn-row button { flex: 1; }
+
+        .quick-page-group { display: flex; gap: 6px; }
+        .quick-page-group input { flex: 1; padding: 9px 12px; font-size: 0.85rem; }
+        .quick-page-group button { width: auto; padding: 9px 16px; font-size: 0.85rem; white-space: nowrap; }
+
+        .confirm-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            z-index: 300; display: none; align-items: center; justify-content: center;
+        }
+        .confirm-overlay.show { display: flex; }
+        .confirm-dialog {
+            background: white; border-radius: 16px; padding: 24px;
+            width: 300px; text-align: center;
+        }
+        .confirm-dialog p { margin-bottom: 18px; font-size: 0.95rem; line-height: 1.5; }
+
+        ::-webkit-scrollbar { width: 0; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>我的書櫃</h2>
-        <button class="add-btn" onclick="openModal()">＋</button>
-    </div>
 
-    <div class="controls">
-        <select id="sort-select" onchange="applySort()">
-            <option value="newest">最新加入</option>
-            <option value="title">按書名排序</option>
-            <option value="progress">按閱讀進度</option>
-        </select>
-        <div class="grid-toggles">
-            <button class="grid-btn" onclick="setCols(2)">2</button>
-            <button class="grid-btn" onclick="setCols(3)">3</button>
-            <button class="grid-btn active" onclick="setCols(4)" id="btn-4">4</button>
-            <button class="grid-btn" onclick="setCols(5)">5</button>
+    <!-- ═══ Header ═══ -->
+    <div class="header">
+        <h2 id="view-title">我的書櫃</h2>
+        <div class="header-actions">
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="grid" title="九宮格">⊞</button>
+                <button class="view-btn" data-view="list" title="列表">☰</button>
+                <button class="view-btn" data-view="cover3" title="封面 ×3">🖼</button>
+                <button class="view-btn" data-view="cover5" title="封面 ×5">🖼</button>
+                <button class="view-btn" data-view="calendar" title="月曆">📅</button>
+            </div>
+            <button class="add-btn" onclick="app.openModal('add-modal')">＋</button>
         </div>
     </div>
 
+    <!-- ═══ Stats ═══ -->
+    <div class="stats-bar" id="stats-bar">
+        <div class="stat-item">
+            <div class="stat-num" id="stat-total">0</div>
+            <div class="stat-label">藏書</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num" id="stat-reading">0</div>
+            <div class="stat-label">閱讀中</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num" id="stat-done">0</div>
+            <div class="stat-label">已讀完</div>
+        </div>
+    </div>
+
+    <!-- ═══ Content ═══ -->
     <div class="content-area">
-        <div id="book-grid" class="book-grid"></div>
+        <div id="grid-view" class="book-grid"></div>
+        <div id="list-view" class="book-list" style="display:none;"></div>
+        <div id="cover3-view" class="book-covers cols-3" style="display:none;"></div>
+        <div id="cover5-view" class="book-covers cols-5" style="display:none;"></div>
+        <div id="cal-view" class="cal-container" style="display:none;"></div>
     </div>
 </div>
 
-<!-- 新增/編輯視窗 -->
-<div class="modal-overlay" id="modal">
+<!-- ═══ 新增書籍 Modal ═══ -->
+<div class="modal-overlay" id="add-modal">
     <div class="action-sheet">
-        <h3 id="modal-title">新增書籍</h3>
-        <input type="hidden" id="edit-id">
+        <h3>📚 新增書籍</h3>
+        <input type="file" id="b-cover-input" accept="image/*" onchange="app.previewCover(this)">
+        <img id="cover-preview-img" class="cover-preview">
         <div class="form-group">
-            <label>書名</label>
-            <input type="text" id="b-title">
+            <label class="form-label">書名</label>
+            <input type="text" id="b-title" placeholder="例如：原子習慣">
         </div>
         <div class="form-group">
-            <label>總頁數</label>
-            <input type="number" id="b-total">
+            <label class="form-label">總頁數</label>
+            <input type="number" id="b-total" placeholder="例如：320" min="1">
         </div>
-        <div class="form-group" id="current-read-group" style="display:none;">
-            <label>目前進度(頁)</label>
-            <input type="number" id="b-current">
+        <div class="btn-row" style="margin-top:8px;">
+            <button class="btn-secondary" onclick="app.closeModal('add-modal')">取消</button>
+            <button class="btn-primary" onclick="app.addBook()">確定新增</button>
         </div>
+    </div>
+</div>
+
+<!-- ═══ 編輯書籍 Modal ═══ -->
+<div class="modal-overlay" id="edit-modal">
+    <div class="action-sheet">
+        <h3>✏️ 編輯書籍</h3>
+        <div class="form-group">
+            <label class="form-label">書名</label>
+            <input type="text" id="edit-title">
+        </div>
+        <div class="form-group">
+            <label class="form-label">總頁數</label>
+            <input type="number" id="edit-total" min="1">
+        </div>
+        <div class="form-group">
+            <label class="form-label">目前閱讀進度</label>
+            <div class="quick-page-group">
+                <input type="number" id="edit-current-read" placeholder="目前頁數">
+                <button class="btn-outline" onclick="app.quickSaveProgress()">更新</button>
+            </div>
+        </div>
+        <button class="btn-primary" onclick="app.saveBookChanges()">💾 儲存修改</button>
+        <button class="btn-danger" onclick="app.confirmDelete()" style="margin-top:6px;">🗑 刪除書籍</button>
+        <button class="btn-text" onclick="app.closeModal('edit-modal')" style="margin-top:6px;">關閉</button>
+    </div>
+</div>
+
+<!-- ═══ 刪除確認 Modal ═══ -->
+<div class="confirm-overlay" id="confirm-delete">
+    <div class="confirm-dialog">
+        <p>確定要刪除這本書嗎？<br><span style="color:var(--text-muted);font-size:0.8rem;">此操作無法復原</span></p>
         <div class="btn-row">
-            <button onclick="closeModal()">取消</button>
-            <button class="primary" onclick="saveBook()">儲存</button>
+            <button class="btn-secondary" onclick="app.closeConfirm()">取消</button>
+            <button class="btn-danger" onclick="app.deleteBook()">確定刪除</button>
         </div>
     </div>
 </div>
 
 <script>
-    let books = JSON.parse(localStorage.getItem('my_books')) || [];
-    let currentCols = 4;
+/**
+ * ═══════════════════════════════════════════════
+ *  Bookshelf Application
+ *  ─────────────────────────────────────────────
+ *  Features:
+ *    - 九宮格 / 列表 / 封面×3 / 封面×5 / 月曆 五種視圖
+ *    - localStorage 持久化
+ *    - 閱讀進度追蹤
+ *    - XSS 防護 (escHtml)
+ * ═══════════════════════════════════════════════
+ */
+(function () {
+    'use strict';
 
-    function setCols(n) {
-        currentCols = n;
-        document.documentElement.style.setProperty('--grid-cols', n);
-        document.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
-        render();
+    const STORAGE_KEY = 'my_books';
+    const DEFAULT_VIEW = 'grid';
+
+    const VIEW_TITLES = {
+        grid:     '我的書櫃',
+        list:     '藏書列表',
+        cover3:   '封面牆 ×3',
+        cover5:   '封面牆 ×5',
+        calendar: '閱讀月曆'
+    };
+
+    const VIEW_MAP = {
+        grid:     'grid-view',
+        list:     'list-view',
+        cover3:   'cover3-view',
+        cover5:   'cover5-view',
+        calendar: 'cal-view'
+    };
+
+    /* ────────── State ────────── */
+    let books = loadBooks();
+    let currentEditId = null;
+    let currentView = DEFAULT_VIEW;
+    let calYear = null, calMonth = null;
+
+    /* ────────── Persistence ────────── */
+    function loadBooks() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        } catch (e) {
+            console.warn('載入書籍資料失敗', e);
+            return [];
+        }
+    }
+    function saveBooks() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
     }
 
-    function applySort() {
-        const val = document.getElementById('sort-select').value;
-        if (val === 'title') books.sort((a,b) => a.title.localeCompare(b.title));
-        else if (val === 'progress') books.sort((a,b) => (b.currentRead/b.total) - (a.currentRead/a.total));
-        else books.sort((a,b) => b.id - a.id);
-        render();
+    /* ────────── XSS Protection ────────── */
+    function escHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
     }
 
-    function render() {
-        const grid = document.getElementById('book-grid');
-        grid.innerHTML = '';
-        const isCompact = currentCols >= 3;
-        
-        books.forEach(b => {
-            const pct = Math.round((b.currentRead / b.total) * 100);
-            const card = document.createElement('div');
-            card.className = 'book-card' + (isCompact ? ' compact' : '');
-            card.onclick = () => openModal(b.id);
-            card.innerHTML = `
-                <div class="cover-img">📘</div>
-                <div class="card-info">
-                    <div class="card-title">${b.title}</div>
-                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-                </div>
-            `;
-            grid.appendChild(card);
+    /* ────────── Stats ────────── */
+    function calcStats() {
+        var total = books.length;
+        var done = books.filter(function (b) { return b.currentRead >= b.total && b.total > 0; }).length;
+        return { total: total, reading: total - done, done: done };
+    }
+    function updateStats() {
+        var s = calcStats();
+        document.getElementById('stat-total').textContent = s.total;
+        document.getElementById('stat-reading').textContent = s.reading;
+        document.getElementById('stat-done').textContent = s.done;
+    }
+
+    /* ────────── Empty HTML ────────── */
+    function emptyHtml() {
+        return '<div class="empty-state">' +
+            '<div class="empty-icon">📖</div>' +
+            '<div class="empty-text">還沒有書籍</div>' +
+            '<div class="empty-hint">點擊 ＋ 新增第一本書</div>' +
+            '</div>';
+    }
+
+    /* ────────── Progress Helper ────────── */
+    function calcProgress(b) {
+        var pct = b.total > 0 ? Math.min(100, Math.round((b.currentRead / b.total) * 100)) : 0;
+        return { pct: pct, done: pct >= 100 };
+    }
+
+    /* ═══════════════════════════════════════════
+       Render: Grid View
+    ═══════════════════════════════════════════ */
+    function renderGrid() {
+        var grid = document.getElementById('grid-view');
+        if (books.length === 0) {
+            grid.innerHTML = emptyHtml();
+            document.getElementById('stats-bar').style.display = 'none';
+            return;
+        }
+        document.getElementById('stats-bar').style.display = 'flex';
+        grid.innerHTML = books.map(function (b) {
+            var p = calcProgress(b);
+            var coverImg = b.cover
+                ? '<img src="' + escHtml(b.cover) + '" class="cover-img" alt="' + escHtml(b.title) + '">'
+                : '<div class="cover-img">📘</div>';
+            return '<div class="book-card" onclick="app.editBook(' + b.id + ')">' +
+                coverImg +
+                '<div class="card-info">' +
+                '<div class="card-title">' + escHtml(b.title) + '</div>' +
+                '<div class="progress-bar"><div class="progress-fill' + (p.done ? ' done' : '') + '" style="width:' + p.pct + '%;"></div></div>' +
+                '<div class="card-meta"><span>' + (p.done ? '✅ 已讀完' : p.pct + '% 完成') + '</span><span>' + b.currentRead + '/' + b.total + ' 頁</span></div>' +
+                '</div></div>';
+        }).join('');
+    }
+
+    /* ═══════════════════════════════════════════
+       Render: List View
+    ═══════════════════════════════════════════ */
+    function renderList() {
+        var list = document.getElementById('list-view');
+        if (books.length === 0) {
+            list.innerHTML = emptyHtml();
+            document.getElementById('stats-bar').style.display = 'none';
+            return;
+        }
+        document.getElementById('stats-bar').style.display = 'flex';
+        list.innerHTML = books.map(function (b) {
+            var p = calcProgress(b);
+            var coverImg = b.cover
+                ? '<img src="' + escHtml(b.cover) + '" class="row-cover" alt="' + escHtml(b.title) + '">'
+                : '<div style="width:52px;height:72px;border-radius:8px;background:linear-gradient(135deg,#e2e8f0,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">📘</div>';
+            return '<div class="book-row" onclick="app.editBook(' + b.id + ')">' +
+                coverImg +
+                '<div class="row-info">' +
+                '<div class="row-title">' + escHtml(b.title) + '</div>' +
+                '<div class="row-progress-bar"><div class="row-progress-fill' + (p.done ? ' done' : '') + '" style="width:' + p.pct + '%;"></div></div>' +
+                '<div class="row-meta"><span>' + b.currentRead + ' / ' + b.total + ' 頁</span><span>' + (p.done ? '✅ 已讀完' : p.pct + '%') + '</span></div>' +
+                '</div><div class="row-arrow">›</div></div>';
+        }).join('');
+    }
+
+    /* ═══════════════════════════════════════════
+       Render: Cover View (×3 / ×5)
+    ═══════════════════════════════════════════ */
+    function renderCovers(containerId) {
+        var container = document.getElementById(containerId);
+        if (books.length === 0) {
+            container.innerHTML = emptyHtml();
+            document.getElementById('stats-bar').style.display = 'none';
+            return;
+        }
+        document.getElementById('stats-bar').style.display = 'flex';
+        container.innerHTML = books.map(function (b) {
+            var p = calcProgress(b);
+            var badgeClass = p.done ? 'cover-badge done' : 'cover-badge';
+            var badgeText = p.done ? '✓' : p.pct + '%';
+
+            var photoHtml = b.cover
+                ? '<img src="' + escHtml(b.cover) + '" class="cover-photo" alt="' + escHtml(b.title) + '" loading="lazy">'
+                : '<div class="cover-placeholder">📘</div>';
+
+            return '<div class="cover-card" onclick="app.editBook(' + b.id + ')">' +
+                photoHtml +
+                '<div class="' + badgeClass + '">' + badgeText + '</div>' +
+                '<div class="cover-overlay">' +
+                '<div class="cover-overlay-title">' + escHtml(b.title) + '</div>' +
+                '<div class="cover-overlay-bar">' +
+                '<div class="cover-overlay-fill ' + (p.done ? 'done' : 'progress') + '" style="width:' + p.pct + '%;"></div>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+        }).join('');
+    }
+
+    /* ═══════════════════════════════════════════
+       Render: Calendar View
+    ═══════════════════════════════════════════ */
+    function renderCalendar() {
+        var now = new Date();
+        if (calYear === null) { calYear = now.getFullYear(); calMonth = now.getMonth(); }
+
+        document.getElementById('cal-view').innerHTML =
+            '<div class="cal-nav">' +
+            '<button class="cal-nav-btn" onclick="app.changeMonth(-1)">‹</button>' +
+            '<div class="cal-month-label">' + calYear + ' 年 ' + (calMonth + 1) + ' 月</div>' +
+            '<button class="cal-nav-btn" onclick="app.changeMonth(1)">›</button></div>' +
+            '<div class="cal-weekdays">' +
+            '<div class="cal-weekday">日</div><div class="cal-weekday">一</div><div class="cal-weekday">二</div>' +
+            '<div class="cal-weekday">三</div><div class="cal-weekday">四</div><div class="cal-weekday">五</div><div class="cal-weekday">六</div></div>' +
+            '<div class="calendar-grid" id="calendar-body"></div>';
+
+        var body = document.getElementById('calendar-body');
+        var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        var firstDay = new Date(calYear, calMonth, 1).getDay();
+        var readDates = {};
+
+        books.forEach(function (b) {
+            (b.history || []).forEach(function (h) {
+                var d = new Date(h.date);
+                if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+                    readDates[d.getDate()] = (readDates[d.getDate()] || 0) + h.pages;
+                }
+            });
         });
+
+        var todayD = now.getFullYear() === calYear && now.getMonth() === calMonth ? now.getDate() : null;
+        var prevDays = new Date(calYear, calMonth, 0).getDate();
+
+        var fragment = document.createDocumentFragment();
+        for (var i = firstDay - 1; i >= 0; i--) {
+            fragment.appendChild(createDayEl(prevDays - i, true, 0, false));
+        }
+        for (var i = 1; i <= daysInMonth; i++) {
+            fragment.appendChild(createDayEl(i, false, readDates[i] || 0, todayD === i));
+        }
+        body.appendChild(fragment);
     }
 
-    function openModal(id = null) {
-        const modal = document.getElementById('modal');
-        modal.classList.add('show');
-        if (id) {
-            const b = books.find(x => x.id === id);
-            document.getElementById('modal-title').innerText = '編輯書籍';
-            document.getElementById('edit-id').value = b.id;
-            document.getElementById('b-title').value = b.title;
-            document.getElementById('b-total').value = b.total;
-            document.getElementById('b-current').value = b.currentRead;
-            document.getElementById('current-read-group').style.display = 'block';
+    function createDayEl(day, otherMonth, pages, isToday) {
+        var div = document.createElement('div');
+        div.className = 'cal-day' + (otherMonth ? ' other-month' : '') + (pages ? ' has-read' : '') + (isToday ? ' today' : '');
+        div.textContent = day;
+        if (pages) div.title = '閱讀 ' + pages + ' 頁';
+        return div;
+    }
+
+    /* ═══════════════════════════════════════════
+       Master Render
+    ═══════════════════════════════════════════ */
+    function render() {
+        updateStats();
+        renderGrid();
+        renderList();
+        renderCovers('cover3-view');
+        renderCovers('cover5-view');
+    }
+
+    /* ────────── View Switching ────────── */
+    function switchView(view) {
+        currentView = view;
+        // 隱藏所有視圖
+        Object.keys(VIEW_MAP).forEach(function (v) {
+            document.getElementById(VIEW_MAP[v]).style.display = 'none';
+        });
+        // 顯示目標視圖
+        var targetId = VIEW_MAP[view];
+        if (targetId) {
+            var el = document.getElementById(targetId);
+            el.style.display = targetId === 'grid-view' ? 'grid' :
+                               targetId === 'list-view' ? 'flex' :
+                               targetId === 'cal-view' ? 'block' : 'grid';
+        }
+        // 更新按鈕狀態
+        document.querySelectorAll('.view-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+        // 更新標題
+        document.getElementById('view-title').textContent = VIEW_TITLES[view] || '我的書櫃';
+        // 渲染對應視圖
+        if (view === 'calendar') {
+            renderCalendar();
         } else {
-            document.getElementById('modal-title').innerText = '新增書籍';
-            document.getElementById('edit-id').value = '';
+            render();
+        }
+    }
+
+    /* ═══════════════════════════════════════════
+       Modal Controls
+    ═══════════════════════════════════════════ */
+    function openModal(id) {
+        document.getElementById(id).classList.add('show');
+        if (id === 'add-modal') {
             document.getElementById('b-title').value = '';
             document.getElementById('b-total').value = '';
-            document.getElementById('current-read-group').style.display = 'none';
+            document.getElementById('b-cover-input').value = '';
+            var p = document.getElementById('cover-preview-img');
+            p.style.display = 'none';
+            p.src = '';
         }
     }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('show');
+    }
 
-    function closeModal() { document.getElementById('modal').classList.remove('show'); }
-
-    function saveBook() {
-        const id = document.getElementById('edit-id').value;
-        const title = document.getElementById('b-title').value;
-        const total = parseInt(document.getElementById('b-total').value);
-        
-        if (id) {
-            const b = books.find(x => x.id == id);
-            b.title = title;
-            b.total = total;
-            b.currentRead = parseInt(document.getElementById('b-current').value);
+    function previewCover(input) {
+        var p = document.getElementById('cover-preview-img');
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) { p.src = e.target.result; p.style.display = 'block'; };
+            reader.readAsDataURL(input.files[0]);
         } else {
-            books.push({ id: Date.now(), title, total, currentRead: 0 });
+            p.style.display = 'none';
         }
-        localStorage.setItem('my_books', JSON.stringify(books));
-        closeModal();
-        render();
     }
 
-    render();
+    function confirmDelete() { document.getElementById('confirm-delete').classList.add('show'); }
+    function closeConfirm() { document.getElementById('confirm-delete').classList.remove('show'); }
+
+    /* ═══════════════════════════════════════════
+       CRUD Operations
+    ═══════════════════════════════════════════ */
+    function editBook(id) {
+        currentEditId = id;
+        var b = books.find(function (x) { return x.id === id; });
+        if (!b) return;
+        document.getElementById('edit-title').value = b.title;
+        document.getElementById('edit-total').value = b.total;
+        document.getElementById('edit-current-read').value = b.currentRead;
+        openModal('edit-modal');
+    }
+
+    function saveBookChanges() {
+        var b = books.find(function (x) { return x.id === currentEditId; });
+        if (!b) return;
+        b.title = document.getElementById('edit-title').value.trim() || b.title;
+        b.total = Math.max(1, parseInt(document.getElementById('edit-total').value) || b.total);
+        saveBooks();
+        render();
+        if (currentView === 'calendar') renderCalendar();
+        closeModal('edit-modal');
+    }
+
+    function quickSaveProgress() {
+        var b = books.find(function (x) { return x.id === currentEditId; });
+        if (!b) return;
+        var newRead = parseInt(document.getElementById('edit-current-read').value);
+        if (isNaN(newRead) || newRead < 0) return;
+        var today = new Date().toISOString().split('T')[0];
+        var delta = newRead - b.currentRead;
+        if (!b.history) b.history = [];
+        if (delta > 0) b.history.push({ date: today, pages: delta });
+        b.currentRead = newRead;
+        saveBooks();
+        render();
+        if (currentView === 'calendar') renderCalendar();
+    }
+
+    function deleteBook() {
+        books = books.filter(function (x) { return x.id !== currentEditId; });
+        saveBooks();
+        render();
+        if (currentView === 'calendar') renderCalendar();
+        closeConfirm();
+        closeModal('edit-modal');
+    }
+
+    function addBook() {
+        var title = document.getElementById('b-title').value.trim();
+        var total = Math.max(1, parseInt(document.getElementById('b-total').value) || 1);
+        if (!title) { alert('請輸入書名'); return; }
+        var fileInput = document.getElementById('b-cover-input');
+        if (fileInput.files && fileInput.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) { createBook(title, total, e.target.result); };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            createBook(title, total, null);
+        }
+    }
+
+    function createBook(title, total, coverData) {
+        books.push({
+            id: Date.now(),
+            title: title,
+            total: total,
+            currentRead: 0,
+            history: [],
+            cover: coverData,
+            createdAt: new Date().toISOString()
+        });
+        saveBooks();
+        render();
+        if (currentView === 'calendar') renderCalendar();
+        closeModal('add-modal');
+    }
+
+    function changeMonth(delta) {
+        calMonth += delta;
+        if (calMonth < 0) { calMonth = 11; calYear--; }
+        if (calMonth > 11) { calMonth = 0; calYear++; }
+        renderCalendar();
+    }
+
+    /* ═══════════════════════════════════════════
+       Event Binding & Init
+    ═══════════════════════════════════════════ */
+    document.querySelectorAll('.view-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            switchView(btn.dataset.view);
+        });
+    });
+
+    // 點擊遮罩關閉 Modal
+    document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) overlay.classList.remove('show');
+        });
+    });
+
+    // Init
+    switchView(DEFAULT_VIEW);
+
+    /* ────────── Public API ────────── */
+    window.app = {
+        switchView: switchView,
+        openModal: openModal,
+        closeModal: closeModal,
+        editBook: editBook,
+        saveBookChanges: saveBookChanges,
+        quickSaveProgress: quickSaveProgress,
+        deleteBook: deleteBook,
+        addBook: addBook,
+        confirmDelete: confirmDelete,
+        closeConfirm: closeConfirm,
+        changeMonth: changeMonth,
+        previewCover: previewCover,
+        render: render,
+        renderCalendar: renderCalendar
+    };
+})();
 </script>
 </body>
 </html>
-
