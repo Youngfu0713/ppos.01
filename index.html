@@ -2,418 +2,537 @@
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>知識收藏庫</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>知識管理庫</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        @font-face { font-family: 'MiaoFont'; src: url('Miao.ttf') format('truetype'); font-weight: normal; font-style: normal; }
+
         :root {
-            --primary: #5151e5;
-            --primary-light: #ede9fe;
-            --primary-dark: #4343d1;
-            --danger: #e11d48;
-            --danger-light: #fee2e2;
-            --success: #059669;
-            --success-light: #d1fae5;
-            --bg-main: #f8f7f5;
-            --bg-card: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #94a3b8;
-            --border: #f1f5f9;
-            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
-            --radius: 14px;
-            --radius-sm: 10px;
-            --transition: 0.2s ease;
+            --primary: #5151e5; --primary-hover: #3d3dbd; --primary-light: #eef2ff;
+            --bg-main: #fcfbfa; --bg-card: #ffffff; --text-main: #1e293b; --text-muted: #64748b;
+            --border: #f1f5f9; --border-hover: #cbd5e1;
+            --shadow-sm: 0 2px 8px rgba(15,23,42,0.04); --shadow-md: 0 10px 30px -10px rgba(15,23,42,0.08);
+            --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
         }
+        /* 風格定義 */
+        body[data-theme="macaron"] { --primary: #f07b95; --primary-hover: #d85c78; --primary-light: #fff0f3; --bg-main: #faf6f0; --bg-card: #fff; --text-main: #4a3e3d; --text-muted: #8c7a78; --border: #f3e5df; --border-hover: #e6c2b8; }
+        body[data-theme="dark"] { --primary: #818cf8; --primary-hover: #6366f1; --primary-light: #1e1b4b; --bg-main: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --border: #334155; --border-hover: #475569; }
+        body[data-theme="nordic"] { --primary: #0d9488; --primary-hover: #0f766e; --primary-light: #ccfbf1; --bg-main: #f4f7f6; --bg-card: #fff; --text-main: #132a2f; --text-muted: #52796f; --border: #e0e7e5; --border-hover: #b2c9c2; }
+        body[data-theme="forest"] { --primary: #15803d; --primary-hover: #166534; --primary-light: #dcfce7; --bg-main: #f0fdf4; --bg-card: #fff; --text-main: #064e3b; --text-muted: #315e4f; --border: #bbf7d0; --border-hover: #86efac; }
+        body[data-theme="sunset"] { --primary: #ea580c; --primary-hover: #c2410c; --primary-light: #ffedd5; --bg-main: #fff7ed; --bg-card: #fff; --text-main: #7c2d12; --text-muted: #9a3412; --border: #fed7aa; --border-hover: #fdba74; }
+        body[data-theme="royal"] { --primary: #7e22ce; --primary-hover: #6b21a8; --primary-light: #f3e8ff; --bg-main: #faf5ff; --bg-card: #fff; --text-main: #581c87; --text-muted: #7e22ce; --border: #e9d5ff; --border-hover: #d8b4fe; }
+        body[data-theme="lavender"] { --primary: #94a3b8; --primary-hover: #64748b; --primary-light: #f1f5f9; --bg-main: #f8fafc; --bg-card: #fff; --text-main: #334155; --text-muted: #64748b; --border: #cbd5e1; --border-hover: #94a3b8; }
+        body[data-theme="coffee"] { --primary: #78350f; --primary-hover: #5d280a; --primary-light: #fef3c7; --bg-main: #fefce8; --bg-card: #fff; --text-main: #451a03; --text-muted: #854d0e; --border: #fde68a; --border-hover: #fcd34d; }
+        body[data-theme="cyberpunk"] { --primary: #e11d48; --primary-hover: #be123c; --primary-light: #111827; --bg-main: #000000; --bg-card: #111827; --text-main: #f97316; --text-muted: #a78bfa; --border: #1f2937; --border-hover: #374151; }
+        
+        body { font-family: 'MiaoFont', sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; display: flex; justify-content: center; transition: background 0.25s, color 0.25s; }
+        .calendar-container { width: 100%; max-width: 550px; background: var(--bg-card); min-height: 100vh; box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
+        .calendar-header { padding: 14px 18px 8px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+        .calendar-header h1 { margin: 0 0 8px; font-size: 1.1rem; font-weight: 800; text-align: center; }
+        
+        .theme-select-wrapper { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+        .theme-select-dropdown { font-family: inherit; padding: 5px 10px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); font-size: 0.78rem; font-weight: 700; flex-grow: 1; cursor: pointer; }
+        
+        .date-picker-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .font-color-picker-container { display: flex; align-items: center; gap: 3px; padding: 2px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 0.85rem; font-weight: 700; color: var(--text-muted); background: var(--bg-main); }
+        .font-color-picker-container input[type="color"] { border: none; width: 20px; height: 20px; background: none; padding: 0; cursor: pointer; }
+        
+        .event-form { padding: 12px 18px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+        .form-row { display: flex; gap: 6px; flex-direction: column; }
+        .event-form input[type="text"], .event-form input[type="url"] { font-family: inherit; width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 0.88rem; background: var(--bg-main); color: var(--text-main); outline: none; }
+        .category-selector-container { display: flex; flex-direction: column; gap: 6px; }
+        .cat-row-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .cat-label-title { font-size: 0.72rem; font-weight: 800; color: var(--text-muted); min-width: 42px; }
+        .cat-tag-btn { font-family: inherit; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; border: 2px solid transparent; cursor: pointer; opacity: 0.45; transition: all 0.2s; }
+        .cat-tag-btn.active { opacity: 1; border-color: rgba(30,41,59,0.7); box-shadow: 0 2px 8px rgba(15,23,42,0.1); }
+        .color-edit-toggle { font-family: inherit; padding: 4px 8px; border-radius: 20px; background: var(--bg-main); border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; color: var(--text-muted); cursor: pointer; }
+        .sub-cat-container-box { display: none; background: var(--bg-main); padding: 10px; border-radius: var(--radius-md); border: 1px dashed var(--border-hover); }
+        .sub-cat-container-box.active { display: block; }
+        .sub-cat-group-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; border-bottom: 1px dashed var(--border-hover); padding-bottom: 6px; }
+        .sub-cat-group-title { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); }
+        .sub-cat-pills-list { display: flex; gap: 4px; flex-wrap: wrap; }
+        .sub-cat-tag-btn { font-family: inherit; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; border: 1px solid var(--border-hover); background: var(--bg-card); color: var(--text-muted); cursor: pointer; }
+        .sub-cat-tag-btn.active { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+        
+        .manage-tabs-row { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; border-bottom: 2px solid var(--border); margin-bottom: 8px; }
+        .manage-tab-item { font-family: inherit; padding: 5px 10px; font-size: 0.78rem; font-weight: 800; border-radius: 6px 6px 0 0; border: 1px solid transparent; background: var(--bg-main); color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        .manage-tab-item.active { background: var(--bg-card); border-color: var(--border) var(--border) transparent; color: var(--text-main); }
+        .category-manage-panel { display: flex; flex-direction: column; gap: 10px; max-height: 45vh; overflow-y: auto; padding-right: 2px; }
+        .manage-list-item { display: flex; flex-direction: column; background: var(--bg-card); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); gap: 6px; box-shadow: var(--shadow-sm); }
+        .manage-main-row { display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); padding: 6px; border-radius: var(--radius-sm); border-left: 4px solid var(--primary); }
+        .manage-list-item .left { display: flex; align-items: center; gap: 6px; }
+        .manage-list-item input[type="color"] { border: none; width: 24px; height: 20px; background: none; padding: 0; cursor: pointer; }
+        .cat-action-btn-group { display: flex; gap: 3px; }
+        .cat-panel-btn { font-family: inherit; font-size: 0.7rem; font-weight: 800; padding: 3px 7px; border-radius: 4px; border: none; cursor: pointer; }
+        .cat-btn-edit { background: var(--border-hover); color: var(--text-main); }
+        .cat-btn-del { background: #fee2e2; color: #ef4444; }
+        .manage-sub-box { display: flex; flex-direction: column; gap: 6px; }
+        .manage-sub-group-block { background: var(--bg-card); border: 1px solid var(--border-hover); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+        .manage-sub-group-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; font-weight: 800; color: var(--text-main); border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+        .group-action-links { display: flex; gap: 4px; font-size: 0.65rem; color: var(--text-muted); }
+        .group-link-btn { cursor: pointer; font-weight: 800; }
+        .group-link-btn.del { color: #ef4444; }
+        .manage-sub-list { display: flex; flex-wrap: wrap; gap: 4px; }
+        .manage-sub-pill { font-size: 0.7rem; font-weight: 700; background: var(--bg-main); border: 1px solid var(--border-hover); padding: 3px 7px; border-radius: 20px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-main); }
+        .add-new-cat-row { display: flex; gap: 4px; margin-top: 6px; border-top: 2px solid var(--border-hover); padding-top: 8px; align-items: center; }
+        .add-new-cat-row input[type="text"] { font-family: inherit; flex: 1; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.75rem; background: var(--bg-main); color: var(--text-main); }
+        .add-new-cat-row input[type="color"] { border: none; width: 28px; height: 28px; background: none; padding: 0; cursor: pointer; }
+        .add-cat-submit-btn { font-family: inherit; background: var(--text-main); color: var(--bg-card); border: none; padding: 7px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+        
+        .submit-btn { font-family: inherit; background: var(--primary); color: #fff; border: none; padding: 10px; border-radius: var(--radius-md); font-weight: 700; font-size: 0.88rem; cursor: pointer; }
+        .utility-control-bar { padding: 10px 18px; background: var(--bg-main); display: flex; flex-direction: column; gap: 6px; }
+        .utility-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+        .sort-label { font-size: 0.72rem; font-weight: 800; color: var(--text-muted); }
+        .sort-select-wrapper { display: flex; gap: 3px; }
+        .sort-btn { font-family: inherit; font-size: 0.7rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-hover); background: var(--bg-card); color: var(--text-muted); cursor: pointer; }
+        .sort-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .export-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+        .pdf-export-btn, .img-export-btn { font-family: inherit; padding: 7px 10px; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .pdf-export-btn { background: var(--bg-card); color: #ef4444; border: 1px solid #fca5a5; }
+        .img-export-btn { background: var(--bg-card); color: #10b981; border: 1px solid #a7f3d0; }
+        
+        .timeline { padding: 8px 18px 18px; flex-grow: 1; background: var(--bg-main); min-height: 200px; }
+        .no-events { text-align: center; color: var(--text-muted); padding: 40px 18px; font-size: 0.82rem; font-weight: 600; }
+        .event-card { border: 1px solid transparent; border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); background: var(--bg-card); transition: transform 0.2s; }
+        .event-info { flex-grow: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .event-text-line { font-size: 0.9rem; font-weight: 700; margin: 0; line-height: 1.5; word-break: break-all; }
+        .prefix-badge-main { font-weight: 900; margin-right: 2px; }
+        .sub-pills-text-row { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-top: 1px; word-break: break-all; }
+        .event-link { color: var(--primary); text-decoration: none; font-weight: 700; word-break: break-all; font-size: 0.82rem; display: inline-block; margin-top: 2px; }
+        .event-link:hover { text-decoration: underline; }
+        .manual-move-actions { display: flex; gap: 2px; }
+        .move-step-btn { border: 1px solid var(--border-hover); background: var(--bg-card); color: var(--text-muted); width: 22px; height: 22px; border-radius: 4px; font-size: 0.6rem; cursor: pointer; }
+        .event-inline-actions { display: flex; flex-direction: column; gap: 3px; font-size: 0.72rem; color: var(--text-muted); cursor: pointer; align-items: center; margin-left: 6px; padding-left: 6px; border-left: 1px solid var(--border); }
+        .event-inline-actions span { padding: 1px 3px; transition: color 0.2s; }
+        .event-inline-actions span:hover { color: var(--primary); font-weight: bold; }
+        
+        .filter-bar { display: flex; gap: 5px; overflow-x: auto; padding: 4px 0 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+        .filter-bar::-webkit-scrollbar { display: none; }
+        .filter-chip { font-family: inherit; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 14px; border: 1px solid var(--border-hover); background: var(--bg-card); color: var(--text-muted); white-space: nowrap; cursor: pointer; flex-shrink: 0; }
+        .filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Helvetica Neue", sans-serif;
-            background: var(--bg-main);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.45); backdrop-filter: blur(4px); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; display: flex; align-items: flex-end; justify-content: center; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .action-sheet { font-family: inherit; width: 100%; max-width: 550px; background: var(--bg-card); color: var(--text-main); border-radius: 18px 18px 0 0; padding: 20px 18px 30px; box-shadow: 0 -15px 40px rgba(15,23,42,0.12); transform: translateY(100%); transition: transform 0.32s ease-out; display: flex; flex-direction: column; gap: 14px; max-height: 82vh; overflow-y: auto; }
+        .modal-overlay.show .action-sheet { transform: translateY(0); }
+        .sheet-drag-indicator { width: 36px; height: 4px; background: var(--border-hover); border-radius: 3px; align-self: center; }
+        .sheet-header { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .sheet-title-desc { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; }
+        .sheet-event-title { font-size: 1rem; font-weight: 800; margin: 0; }
+        .sheet-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .sheet-btn { font-family: inherit; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; color: var(--text-main); font-weight: 800; font-size: 0.85rem; }
+        .sheet-btn.danger-btn { grid-column: span 2; }
+        .sheet-edit-panel, .sheet-category-panel { display: none; background: var(--bg-main); border: 1px solid var(--border-hover); border-radius: var(--radius-lg); padding: 14px; flex-direction: column; gap: 8px; }
+        .sheet-edit-panel.show, .sheet-category-panel.show { display: flex; }
+        .sheet-edit-panel input[type="text"], .sheet-edit-panel input[type="url"] { font-family: inherit; padding: 8px; border: 1px solid var(--border-hover); border-radius: var(--radius-md); font-size: 0.88rem; outline: none; background: var(--bg-card); color: var(--text-main); }
+        .sheet-category-grid { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+        .sheet-category-item-wrapper { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+        .sheet-cat-main-row { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; cursor: pointer; padding: 3px; border-radius: var(--radius-sm); }
+        .sheet-cat-main-row .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .sheet-sub-group-block { display: flex; flex-direction: column; gap: 3px; padding-left: 12px; border-left: 2px solid var(--border-hover); }
+        .sheet-sub-group-title { font-size: 0.68rem; font-weight: 800; color: var(--text-muted); }
+        .sheet-sub-grid-row { display: flex; flex-wrap: wrap; gap: 3px; }
+        .sheet-sub-pill-btn { font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: var(--bg-main); border: 1px solid var(--border-hover); color: var(--text-main); cursor: pointer; }
+        .sheet-sub-pill-btn.active { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+        .sheet-panel-submit { font-family: inherit; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-md); padding: 10px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
+        .sheet-close-btn { font-family: inherit; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-muted); font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 8px; border-radius: var(--radius-md); text-align: center; }
+        .print-header { display: none; text-align: center; margin-bottom: 18px; border-bottom: 2px solid #1e293b; padding-bottom: 10px; }
+        @media print {
+            body { background: #fff; color: #000; }
+            .calendar-container { width: 100%; max-width: 100%; box-shadow: none; }
+            .calendar-header, .event-form, .utility-control-bar, .manual-move-actions, .modal-overlay, .event-inline-actions { display: none !important; }
+            .timeline { padding: 0; background: #fff; }
+            .event-card { border: 1px solid #e2e8f0; background: #fff; page-break-inside: avoid; }
+            .print-header { display: block !important; }
         }
-
-        .container {
-            width: 100%;
-            max-width: 540px;
-            background: var(--bg-card);
-            min-height: 100vh;
-            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            padding: 18px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg-card);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .header h2 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .add-btn {
-            width: 38px;
-            height: 38px;
-            border: none;
-            border-radius: var(--radius-sm);
-            background: var(--primary);
-            color: white;
-            font-size: 1.25rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.15s, box-shadow 0.15s;
-        }
-        .add-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(81,81,229,0.3);
-        }
-
-        /* Platform Filter Tabs */
-        .filter-bar {
-            display: flex;
-            gap: 8px;
-            padding: 14px 20px;
-            border-bottom: 1px solid var(--border);
-            overflow-x: auto;
-            background: #fafaf9;
-        }
-        .filter-tab {
-            padding: 6px 14px;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            background: white;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all var(--transition);
-        }
-        .filter-tab.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-            box-shadow: var(--shadow);
-        }
-
-        .content-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px 20px;
-        }
-
-        .link-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .link-row {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 14px;
-            cursor: pointer;
-            transition: transform 0.18s, box-shadow 0.18s;
-        }
-        .link-row:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-        }
-        .platform-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-            background: var(--primary-light);
-            color: var(--primary);
-        }
-        .link-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .link-title {
-            font-weight: 600;
-            font-size: 0.92rem;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .link-url {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .link-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        .delete-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1rem;
-            padding: 4px;
-            transition: color 0.15s;
-        }
-        .delete-btn:hover { color: var(--danger); }
-
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
-        }
-        .empty-icon { font-size: 3rem; margin-bottom: 12px; }
-        .empty-text { font-size: 0.9rem; }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.35);
-            z-index: 200;
-            display: none;
-            align-items: flex-end;
-        }
-        .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .action-sheet {
-            width: 100%;
-            background: var(--bg-card);
-            border-radius: 20px 20px 0 0;
-            padding: 20px;
-            max-height: 82vh;
-            overflow-y: auto;
-            animation: slideUp 0.25s ease;
-        }
-        .action-sheet h3 { font-size: 1.15rem; margin-bottom: 16px; }
-        .form-group { margin-bottom: 14px; }
-        .form-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
-        input[type="text"], select {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-size: 0.95rem;
-            background: #fafaf9;
-            outline: none;
-        }
-        select { appearance: none; }
-        button.btn-primary {
-            width: 100%;
-            padding: 13px;
-            border: none;
-            border-radius: 11px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            background: var(--primary);
-            color: white;
-            transition: all 0.15s;
-        }
-        button.btn-secondary {
-            width: 100%;
-            padding: 13px;
-            border: none;
-            border-radius: 11px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            background: #f1f5f9;
-            color: var(--text-main);
-        }
-        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
-        .btn-row button { flex: 1; }
-        ::-webkit-scrollbar { width: 0; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="header">
-        <h2>知識收藏庫</h2>
-        <div class="header-actions">
-            <button class="add-btn" onclick="app.openModal('add-modal')">＋</button>
+<div class="calendar-container">
+    <div class="print-header"><h1 id="print-date-title">知識管理庫清單</h1><p>輸出時間：<span id="print-timestamp"></span></p></div>
+    <div class="calendar-header">
+        <h1>📚 知識管理庫</h1>
+        <div class="theme-select-wrapper">
+            <span class="sort-label">🎨 風格：</span>
+            <select id="theme-select" class="theme-select-dropdown">
+                <option value="default">經典藍</option>
+                <option value="macaron">馬卡龍</option>
+                <option value="dark">深色</option>
+                <option value="nordic">薄荷</option>
+                <option value="forest">森林綠</option>
+                <option value="sunset">夕陽暖</option>
+                <option value="royal">皇家金</option>
+                <option value="lavender">薰衣草</option>
+                <option value="coffee">摩卡咖啡</option>
+                <option value="cyberpunk">賽博龐克</option>
+            </select>
+        </div>
+        <div class="date-picker-row">
+            <div class="font-color-picker-container"><label for="evt-font-color">🪄字色</label><input type="color" id="evt-font-color" value="#000000"></div>
+            <button class="quick-jump-btn" id="btn-toggle-emoji-modal" style="margin-left:auto;background:var(--bg-card);border-color:var(--primary);color:var(--primary);padding:4px 10px;font-size:0.9ln;">😃 常用</button>
+        </div>
+        <!-- 類別篩選快速列 -->
+        <div class="filter-bar" id="category-filter-bar"></div>
+    </div>
+    <div class="event-form">
+        <div class="form-row">
+            <input type="text" id="evt-title" placeholder="請輸入知識標題或摘要..." required>
+            <input type="url" id="evt-url" placeholder="請輸入參考網址 (https://...)" required>
+        </div>
+        <button class="submit-btn" id="add-evt-btn">新增知識條目</button>
+        <div class="category-selector-container">
+            <div class="cat-row-wrapper">
+                <span class="cat-label-title">主類別：</span>
+                <div id="category-buttons-list" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-grow:1;"></div>
+                <button class="color-edit-toggle" id="color-toggle-btn">⚙️</button>
+            </div>
+            <div class="sub-cat-container-box" id="sub-category-container"></div>
         </div>
     </div>
-
-    <div class="filter-bar">
-        <button class="filter-tab active" data-filter="all" onclick="app.setFilter('all')">全部</button>
-        <button class="filter-tab" data-filter="youtube" onclick="app.setFilter('youtube')">YouTube</button>
-        <button class="filter-tab" data-filter="bilibili" onclick="app.setFilter('bilibili')">Bilibili</button>
-        <button class="filter-tab" data-filter="threads" onclick="app.setFilter('threads')">Threads</button>
-        <button class="filter-tab" data-filter="other" onclick="app.setFilter('other')">其他</button>
+    <div class="utility-control-bar" id="sort-order-section">
+        <div class="export-btn-group">
+            <button class="pdf-export-btn" id="btn-export-pdf">📄 輸出 PDF</button>
+            <button class="img-export-btn" id="btn-export-img">📸 輸出圖檔</button>
+        </div>
+        <div class="utility-row">
+            <span class="sort-label">排列：</span>
+            <div class="sort-select-wrapper">
+                <button class="sort-btn" id="sort-btn-manual">✍️ 手動</button>
+                <button class="sort-btn" id="sort-btn-az">🔤 A-Z</button>
+                <button class="sort-btn" id="sort-btn-za">🔤 Z-A</button>
+            </div>
+        </div>
     </div>
+    <div class="timeline" id="timeline-list"></div>
+</div>
 
-    <div class="content-area">
-        <div id="link-list" class="link-list"></div>
+<!-- Modal 區塊 -->
+<div class="modal-overlay" id="emoji-modal" onclick="closeEmojiModal()">
+    <div class="action-sheet" onclick="event.stopPropagation()" style="border-radius:18px;max-height:75vh;margin:auto 12px;">
+        <div class="sheet-header"><span class="sheet-title-desc">🛠️ 常用項目管理</span></div>
+        <div style="margin-top:10px;">
+            <label class="sheet-title-desc">😀 自訂 Emoji</label>
+            <div id="emoji-grid-container" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;"></div>
+            <div style="display:flex;gap:4px;margin-bottom:15px;">
+                <input type="text" id="new-emoji-input" placeholder="新增 Emoji..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--bg-main);">
+                <button onclick="addEmoji()" style="padding:5px 10px;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;">➕</button>
+            </div>
+        </div>
+        <button class="sheet-close-btn" style="margin-top:15px;" onclick="closeEmojiModal()">關閉</button>
     </div>
 </div>
 
-<!-- Add Modal -->
-<div class="modal-overlay" id="add-modal">
-    <div class="action-sheet">
-        <h3>🔗 新增分享連結</h3>
-        <div class="form-group">
-            <label class="form-label">標題</label>
-            <input type="text" id="l-title" placeholder="例如：精選教學影片">
+<div class="modal-overlay" id="manage-modal" onclick="closeManageModal()">
+    <div class="action-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-drag-indicator"></div>
+        <div class="sheet-header"><span class="sheet-title-desc">⚙️ 主類別與子標籤管理</span></div>
+        <div class="manage-tabs-row" id="manage-tabs-container"></div>
+        <div class="category-manage-panel">
+            <div id="manage-categories-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div class="add-new-cat-row">
+                <input type="text" id="new-cat-name" placeholder="新主類別名稱...">
+                <input type="color" id="new-cat-color" value="#5151e5">
+                <button class="add-cat-submit-btn" id="add-new-cat-btn">➕</button>
+            </div>
         </div>
-        <div class="form-group">
-            <label class="form-label">平台</label>
-            <select id="l-platform">
-                <option value="youtube">YouTube</option>
-                <option value="bilibili">Bilibili</option>
-                <option value="threads">Threads</option>
-                <option value="other">其他</option>
-            </select>
+        <button class="sheet-close-btn" onclick="closeManageModal()">完成</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="action-modal" onclick="closeActionModal()">
+    <div class="action-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-drag-indicator"></div>
+        <div class="sheet-header">
+            <span class="sheet-title-desc">📋 知識條目設定</span>
+            <p class="sheet-event-title" id="modal-event-title">載入中...</p>
         </div>
-        <div class="form-group">
-            <label class="form-label">分享連結 (URL)</label>
-            <input type="text" id="l-url" placeholder="https://...">
+        <div class="sheet-grid" id="standard-action-grid">
+            <button class="sheet-btn" id="modal-btn-edit"><span>✏️ 編輯內容與網址</span></button>
+            <button class="sheet-btn" id="modal-btn-copy"><span>📋 複製本條目</span></button>
+            <button class="sheet-btn" id="modal-btn-category"><span>🏷️ 切換主類別</span></button>
+            <button class="sheet-btn danger-btn" id="modal-btn-delete"><span style="color:#ef4444;">🗑️ 刪除條目</span></button>
         </div>
-        <div class="btn-row">
-            <button class="btn-secondary" onclick="app.closeModal('add-modal')">取消</button>
-            <button class="btn-primary" onclick="app.addLink()">確定新增</button>
+        <div class="sheet-edit-panel" id="modal-edit-panel">
+            <label style="font-size:0.78rem;font-weight:800;color:var(--text-muted);">✏️ 修改標題：</label>
+            <input type="text" id="modal-edit-title-input">
+            <label style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">🔗 修改網址：</label>
+            <input type="url" id="modal-edit-url-input">
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button class="sheet-panel-submit" id="modal-edit-submit" style="flex:1;">確認修改</button>
+                <button class="sheet-close-btn" id="modal-edit-back" style="flex:1;">返回</button>
+            </div>
         </div>
+        <div class="sheet-category-panel" id="modal-category-panel">
+            <label style="font-size:0.78rem;font-weight:800;color:var(--text-muted);">🏷️ 選擇類別與子分類：</label>
+            <div class="sheet-category-grid" id="modal-category-grid"></div>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button class="sheet-panel-submit" id="modal-category-submit" style="flex:1;">確認變更</button>
+                <button class="sheet-close-btn" id="modal-category-back" style="flex:1;">返回</button>
+            </div>
+        </div>
+        <button class="sheet-close-btn" onclick="closeActionModal()">關閉選單</button>
     </div>
 </div>
 
 <script>
-(function () {
-    'use strict';
-    const STORAGE_KEY = 'knowledge_links';
-    let links = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
-        { id: 1, title: '範例 YouTube 影片', platform: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }
+    // 資料管理與設定
+    function genId(){return 'kb-'+Date.now()+'-'+Math.random().toString(36).substr(2,6)}
+    
+    let events=JSON.parse(localStorage.getItem('kb_items'))||[];
+    let sortMode=localStorage.getItem('kb_sort_mode')||'manual';
+    let currentTheme=localStorage.getItem('kb_theme')||'default';
+    let currentFilterCatId = 'all'; // 篩選用：預設全部
+    
+    let userEmojis = JSON.parse(localStorage.getItem('kb_user_emojis')) || ['💡', '📌', '⭐', '🔗', '🔥'];
+
+    let categories=JSON.parse(localStorage.getItem('kb_categories'))||[
+        {id:"cat_personal",name:"個人",color:"#5151e5",subGroups:[{id:"g1",title:"日常筆記",items:["生活","靈感"]},{id:"g2",title:"個人檔案",items:["履歷","作品"]}]},
+        {id:"cat_work",name:"工作",color:"#10b981",subGroups:[{id:"g3",title:"開發專案",items:["前端","後端"]}]}
     ];
-    let currentFilter = 'all';
+    let selectedMainCatId=categories[0]?.id||"",selectedSubItems=[],activeTargetEventId=null,managementActiveCatId=categories[0]?.id||"";
 
-    function saveLinks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(links)); }
-    function escHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+    window.addEventListener('DOMContentLoaded',()=>{
+        const themeSelect = document.getElementById('theme-select');
+        themeSelect.value = currentTheme;
+        setTheme(currentTheme);
+        renderCategoryFilters();
+        renderCategorySelectors();
+        renderTimeline();
+        setupEventListeners();
+        updateSortBtnUI();
+    });
 
-    function getPlatformIcon(platform) {
-        switch(platform) {
-            case 'youtube': return '▶';
-            case 'bilibili': return 'B';
-            case 'threads': return '@';
-            default: return '🔗';
-        }
+    function saveToStorage(){
+        localStorage.setItem('kb_items',JSON.stringify(events));
+        localStorage.setItem('kb_categories',JSON.stringify(categories));
+        localStorage.setItem('kb_sort_mode',sortMode);
+        localStorage.setItem('kb_theme',currentTheme);
+        localStorage.setItem('kb_user_emojis', JSON.stringify(userEmojis));
     }
+    
+    function setTheme(t){currentTheme=t;document.body.setAttribute('data-theme',t);localStorage.setItem('kb_theme',t);}
 
-    function extractYouTubeId(url) {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    }
+    function setSortMode(m){sortMode=m;saveToStorage();updateSortBtnUI();renderTimeline()}
+    function updateSortBtnUI(){['manual','az','za'].forEach(m=>{const b=document.getElementById('sort-btn-'+m);if(b)b.classList.toggle('active',sortMode===m)})}
 
-    function render() {
-        const filtered = currentFilter === 'all' 
-            ? links 
-            : links.filter(l => l.platform === currentFilter);
+    // 頂部主類別篩選列渲染
+    function renderCategoryFilters() {
+        const bar = document.getElementById('category-filter-bar');
+        bar.innerHTML = '';
+        
+        // 「全部」選項
+        const allBtn = document.createElement('button');
+        allBtn.className = 'filter-chip' + (currentFilterCatId === 'all' ? ' active' : '');
+        allBtn.innerText = '全部顯示';
+        allBtn.onclick = () => { currentFilterCatId = 'all'; renderCategoryFilters(); renderTimeline(); };
+        bar.appendChild(allBtn);
 
-        const container = document.getElementById('link-list');
-        if (filtered.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">尚無收藏連結</div></div>';
-            return;
-        }
-
-        container.innerHTML = filtered.map(l => `
-            <div class="link-row" onclick="app.openLink(${l.id})">
-                <div class="platform-icon">${getPlatformIcon(l.platform)}</div>
-                <div class="link-info">
-                    <div class="link-title">${escHtml(l.title)}</div>
-                    <div class="link-url">${escHtml(l.url)}</div>
-                </div>
-                <div class="link-actions">
-                    <button class="delete-btn" onclick="event.stopPropagation(); app.deleteLink(${l.id})" title="刪除">🗑</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    window.app = {
-        openModal: (id) => document.getElementById(id).classList.add('show'),
-        closeModal: (id) => document.getElementById(id).classList.remove('show'),
-        setFilter: (filter) => {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.filter === filter);
-            });
-            render();
-        },
-        addLink: () => {
-            const title = document.getElementById('l-title').value.trim();
-            const platform = document.getElementById('l-platform').value;
-            const url = document.getElementById('l-url').value.trim();
-            if (!title || !url) return;
-
-            links.unshift({ id: Date.now(), title, platform, url });
-            saveLinks();
-            render();
-            document.getElementById('l-title').value = '';
-            document.getElementById('l-url').value = '';
-            app.closeModal('add-modal');
-        },
-        deleteLink: (id) => {
-            links = links.filter(l => l.id !== id);
-            saveLinks();
-            render();
-        },
-        openLink: (id) => {
-            const l = links.find(item => item.id === id);
-            if (!l) return;
-
-            if (l.platform === 'youtube') {
-                const videoId = extractYouTubeId(l.url);
-                if (videoId) {
-                    window.location.href = 'vnd.youtube://' + videoId;
-                    setTimeout(() => {
-                        window.open(l.url, '_blank');
-                    }, 400);
-                    return;
-                }
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-chip' + (currentFilterCatId === cat.id ? ' active' : '');
+            btn.innerText = cat.name;
+            btn.style.borderColor = cat.id === currentFilterCatId ? cat.color : '';
+            if(cat.id === currentFilterCatId) {
+                btn.style.background = cat.color;
+                btn.style.color = '#fff';
             }
-            window.open(l.url, '_blank');
-        }
-    };
+            btn.onclick = () => { currentFilterCatId = cat.id; renderCategoryFilters(); renderTimeline(); };
+            bar.appendChild(btn);
+        });
+    }
 
-    render();
-})();
+    // UI 渲染與互動
+    function renderCategorySelectors(){
+        const c=document.getElementById('category-buttons-list');c.innerHTML='';
+        if(categories.length===0){c.innerHTML='<span style="font-size:0.72rem;color:var(--text-muted);">尚無類別，點 ⚙️ 新增</span>';document.getElementById('sub-category-container').classList.remove('active');return}
+        if(!categories.find(x=>x.id===selectedMainCatId))selectedMainCatId=categories[0].id;
+        categories.forEach(cat=>{
+            const b=document.createElement('button');b.className='cat-tag-btn';b.style.backgroundColor=cat.color+'20';b.style.color=cat.color;b.innerText=cat.name;
+            if(cat.id===selectedMainCatId)b.classList.add('active');
+            b.onclick=()=>{selectedMainCatId=cat.id;selectedSubItems=[];renderCategorySelectors()};c.appendChild(b)
+        });renderSubCategories()
+    }
+    function renderSubCategories(){
+        const c=document.getElementById('sub-category-container');const cat=categories.find(x=>x.id===selectedMainCatId);
+        if(!cat||!cat.subGroups||cat.subGroups.length===0){c.classList.remove('active');return}
+        c.classList.add('active');c.innerHTML='';
+        cat.subGroups.forEach(g=>{
+            const d=document.createElement('div');d.className='sub-cat-group-row';d.innerHTML='<div class="sub-cat-group-title">'+g.title+'</div>';
+            const p=document.createElement('div');p.className='sub-cat-pills-list';
+            g.items.forEach(item=>{
+                const b=document.createElement('button');b.className='sub-cat-tag-btn';b.innerText=item;
+                if(selectedSubItems.includes(item))b.classList.add('active');
+                b.onclick=()=>toggleSubItem(item);p.appendChild(b)
+            });d.appendChild(p);c.appendChild(d)
+        })
+    }
+    function toggleSubItem(item){const i=selectedSubItems.indexOf(item);if(i>=0)selectedSubItems.splice(i,1);else selectedSubItems.push(item);renderSubCategories()}
+
+    function submitEventForm(){
+        const inp=document.getElementById('evt-title'),title=inp.value.trim();if(!title)return;
+        const urlInp=document.getElementById('evt-url'),urlVal=urlInp.value.trim();
+        const fc=document.getElementById('evt-font-color').value,mc=categories.find(c=>c.id===selectedMainCatId);
+        const evt={id:genId(),title,url:urlVal,fontColor:fc,mainCategoryId:selectedMainCatId||'',mainCategoryName:mc?mc.name:'',mainCategoryColor:mc?mc.color:'',subCategories:[...selectedSubItems],orderIndex:events.length};
+        events.push(evt);saveToStorage();inp.value='';urlInp.value='';selectedSubItems=[];renderCategorySelectors();renderTimeline();
+    }
+
+    function renderTimeline(){
+        const c=document.getElementById('timeline-list');c.innerHTML='';
+        
+        // 依照類別篩選
+        let displayEvents = currentFilterCatId === 'all' ? [...events] : events.filter(e => e.mainCategoryId === currentFilterCatId);
+
+        if(displayEvents.length===0){c.innerHTML='<div class="no-events">目前尚無知識條目。</div>';return}
+        if(sortMode==='az')displayEvents.sort((a,b)=>a.title.localeCompare(b.title,'zh-Hant'));
+        else if(sortMode==='za')displayEvents.sort((a,b)=>b.title.localeCompare(a.title,'zh-Hant'));
+        else displayEvents.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0));
+
+        displayEvents.forEach((evt,idx)=>{
+            const card=document.createElement('div');card.className='event-card';card.id='event-card-'+evt.id;card.onclick=()=>openActionModal(evt.id);
+            
+            let urlHtml = '';
+            if(evt.url) {
+                let safeUrl = evt.url.startsWith('http') ? evt.url : 'https://' + evt.url;
+                urlHtml = `<a href="${safeUrl}" target="_blank" class="event-link" onclick="event.stopPropagation()">🔗 ${evt.url}</a>`;
+            }
+
+            card.innerHTML=`<div class="event-info">
+                <p class="event-text-line" style="color:${evt.fontColor||'#000'}">
+                    ${evt.mainCategoryName?'<span class="prefix-badge-main" style="color:'+evt.mainCategoryColor+'">['+evt.mainCategoryName+']</span>':''}
+                    ${evt.title}
+                </p>
+                ${urlHtml}
+                ${evt.subCategories&&evt.subCategories.length?'<div class="sub-pills-text-row">'+evt.subCategories.join(' / ')+'</div>':''}
+            </div>`;
+
+            const ac=document.createElement('div');ac.style.display='flex';ac.style.alignItems='center';
+            if(sortMode==='manual'&&currentFilterCatId==='all'){
+                const ma=document.createElement('div');ma.className='manual-move-actions';ma.onclick=e=>e.stopPropagation();
+                const ub=document.createElement('button');ub.className='move-step-btn';ub.innerText='▲';ub.disabled=idx===0;ub.onclick=()=>moveOrderStep(evt.id,-1);
+                const db=document.createElement('button');db.className='move-step-btn';db.innerText='▼';db.disabled=idx===displayEvents.length-1;db.onclick=()=>moveOrderStep(evt.id,1);
+                ma.appendChild(ub);ma.appendChild(db);ac.appendChild(ma)
+            }
+            const ia=document.createElement('div');ia.className='event-inline-actions';ia.innerHTML='<span onclick="event.stopPropagation();openActionModal(\''+evt.id+'\')">編輯</span><span onclick="event.stopPropagation();deleteEventDirect(\''+evt.id+'\')">刪除</span>';ac.appendChild(ia);card.appendChild(ac);c.appendChild(card)
+        })
+    }
+    function moveOrderStep(eid,dir){let de=[...events].sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0));const i=de.findIndex(e=>e.id===eid);if(i===-1)return;const s=i+dir;if(s<0||s>=de.length)return;const t=de[i].orderIndex;de[i].orderIndex=de[s].orderIndex;de[s].orderIndex=t;saveToStorage();renderTimeline()}
+
+    // Modal 與管理視窗
+    function openActionModal(eid){activeTargetEventId=eid;const evt=events.find(e=>e.id===eid);if(!evt)return;document.getElementById('modal-event-title').innerText=evt.title;hideAllSubPanels();document.getElementById('standard-action-grid').style.display='grid';document.getElementById('modal-btn-edit').onclick=()=>showEditPanel(evt);document.getElementById('modal-btn-copy').onclick=()=>copyEvent(evt);document.getElementById('modal-btn-category').onclick=()=>showCatPanel(evt);document.getElementById('modal-btn-delete').onclick=()=>deleteFromModal(evt);document.getElementById('modal-edit-back').onclick=resetToGrid;document.getElementById('modal-edit-submit').onclick=()=>submitEdit(evt);document.getElementById('modal-category-back').onclick=resetToGrid;document.getElementById('action-modal').classList.add('show')}
+    function hideAllSubPanels(){document.getElementById('standard-action-grid').style.display='none';['modal-edit-panel','modal-category-panel'].forEach(id=>document.getElementById(id).classList.remove('show'))}
+    function resetToGrid(){hideAllSubPanels();document.getElementById('standard-action-grid').style.display='grid'}
+    function closeActionModal(){document.getElementById('action-modal').classList.remove('show');activeTargetEventId=null;hideAllSubPanels()}
+
+    function showEditPanel(evt){hideAllSubPanels();document.getElementById('modal-edit-title-input').value=evt.title;document.getElementById('modal-edit-url-input').value=evt.url||'';document.getElementById('modal-edit-panel').classList.add('show')}
+    function submitEdit(evt){const t=document.getElementById('modal-edit-title-input').value.trim();const u=document.getElementById('modal-edit-url-input').value.trim();if(!t)return;evt.title=t;evt.url=u;saveToStorage();renderTimeline();closeActionModal()}
+    function copyEvent(evt){const n={...evt,id:genId(),orderIndex:events.length};n.subCategories=[...(evt.subCategories||[])];events.push(n);saveToStorage();renderTimeline();closeActionModal()}
+    function showCatPanel(evt){hideAllSubPanels();document.getElementById('modal-category-panel').classList.add('show');renderModalCatGrid(evt)}
+    function renderModalCatGrid(evt){const grid=document.getElementById('modal-category-grid');let tmc=evt.mainCategoryId||'',tsi=[...(evt.subCategories||[])];function rf(){grid.innerHTML='';categories.forEach(cat=>{const w=document.createElement('div');w.className='sheet-category-item-wrapper';const mr=document.createElement('div');mr.className='sheet-cat-main-row';mr.style.background=cat.id===tmc?cat.color+'20':'';mr.innerHTML='<span class="dot" style="background:'+cat.color+';"></span><span style="flex:1;">'+cat.name+'</span>'+(cat.id===tmc?'<span style="color:var(--primary);font-size:0.75rem;">✓</span>':'');mr.onclick=()=>{tmc=cat.id;tsi=[];rf()};w.appendChild(mr);if(cat.id===tmc&&cat.subGroups&&cat.subGroups.length)cat.subGroups.forEach(g=>{const sb=document.createElement('div');sb.className='sheet-sub-group-block';sb.innerHTML='<div class="sheet-sub-group-title">'+g.title+'</div>';const sr=document.createElement('div');sr.className='sheet-sub-grid-row';g.items.forEach(item=>{const p=document.createElement('button');p.className='sheet-sub-pill-btn';p.innerText=item;if(tsi.includes(item))p.classList.add('active');p.onclick=()=>{const i=tsi.indexOf(item);if(i>=0)tsi.splice(i,1);else tsi.push(item);rf()};sr.appendChild(p)});sb.appendChild(sr);w.appendChild(sb)});grid.appendChild(w)})}rf();document.getElementById('modal-category-submit').onclick=()=>{const mc=categories.find(c=>c.id===tmc);evt.mainCategoryId=tmc;evt.mainCategoryName=mc?mc.name:'';evt.mainCategoryColor=mc?mc.color:'';evt.subCategories=[...tsi];saveToStorage();renderTimeline();closeActionModal()}}
+
+    function deleteFromModal(evt){if(confirm('確定要刪除「'+evt.title+'」嗎？')){events=events.filter(e=>e.id!==evt.id);saveToStorage();renderTimeline();closeActionModal()}}
+    function deleteEventDirect(id){const evt=events.find(e=>e.id===id);if(!evt||!confirm('確定要刪除「'+evt.title+'」嗎？'))return;events=events.filter(e=>e.id!==id);saveToStorage();renderTimeline()}
+
+    // Emoji 管理 UI
+    function openEmojiModal(){document.getElementById('emoji-modal').classList.add('show');renderItemsGrid()}
+    function closeEmojiModal(){document.getElementById('emoji-modal').classList.remove('show')}
+    
+    function renderItemsGrid() {
+        const eCont = document.getElementById('emoji-grid-container');
+        eCont.innerHTML = '';
+
+        userEmojis.forEach((e, idx) => {
+            const b = document.createElement('button');
+            b.className = 'emoji-item-btn';
+            b.style.cssText = 'padding:5px 10px; background:var(--bg-main); border:1px solid var(--border); border-radius:6px; cursor:pointer; font-size:1.1rem; position:relative;';
+            b.innerHTML = `${e} <span style="position:absolute;top:-5px;right:-5px;font-size:0.6rem;color:red;background:#fff;border-radius:50%;padding:1px;" onclick="event.stopPropagation();removeEmoji(${idx})">✕</span>`;
+            b.onclick = () => { document.getElementById('evt-title').value += e; closeEmojiModal(); };
+            eCont.appendChild(b);
+        });
+    }
+
+    function addEmoji() {
+        const val = document.getElementById('new-emoji-input').value.trim();
+        if(val) { userEmojis.push(val); saveToStorage(); document.getElementById('new-emoji-input').value = ''; renderItemsGrid(); }
+    }
+    function removeEmoji(idx) { userEmojis.splice(idx, 1); saveToStorage(); renderItemsGrid(); }
+
+    function openManageModal(){if(categories.length>0)managementActiveCatId=categories[0].id;renderManageTabs();renderManagePanel();document.getElementById('manage-modal').classList.add('show')}
+    function closeManageModal(){
+        document.getElementById('manage-modal').classList.remove('show');
+        if(!categories.find(c=>c.id===selectedMainCatId)&&categories.length>0)selectedMainCatId=categories[0].id;
+        renderCategoryFilters();
+        renderCategorySelectors();
+    }
+    function renderManageTabs(){const c=document.getElementById('manage-tabs-container');c.innerHTML='';categories.forEach(cat=>{const t=document.createElement('button');t.className='manage-tab-item';t.innerText=cat.name;if(cat.id===managementActiveCatId)t.classList.add('active');t.onclick=()=>{managementActiveCatId=cat.id;renderManageTabs();renderManagePanel()};c.appendChild(t)})}
+    function moveCategory(cid, direction) { const idx = categories.findIndex(c => c.id === cid); const newIdx = idx + direction; if (newIdx >= 0 && newIdx < categories.length) { const temp = categories[idx]; categories[idx] = categories[newIdx]; categories[newIdx] = temp; saveToStorage(); renderManageTabs(); renderManagePanel(); renderCategoryFilters(); renderCategorySelectors(); } }
+    function moveSubGroup(catId, gid, direction) { const cat = categories.find(c => c.id === catId); if (!cat || !cat.subGroups) return; const idx = cat.subGroups.findIndex(g => g.id === gid); const newIdx = idx + direction; if (newIdx >= 0 && newIdx < cat.subGroups.length) { const temp = cat.subGroups[idx]; cat.subGroups[idx] = cat.subGroups[newIdx]; cat.subGroups[newIdx] = temp; saveToStorage(); renderManagePanel(); renderCategorySelectors(); } }
+
+    function renderManagePanel(){
+        const cat=categories.find(c=>c.id===managementActiveCatId), ct=document.getElementById('manage-categories-list');
+        ct.innerHTML='';
+        if(!cat){ct.innerHTML='<p style="color:var(--text-muted);font-size:0.75rem;">請先新增類別</p>';return}
+        const catIdx = categories.findIndex(c => c.id === cat.id);
+        const mi=document.createElement('div');mi.className='manage-list-item';
+        mi.innerHTML=`<div class="manage-main-row" style="border-left-color:${cat.color};">
+            <div class="left"><span style="font-weight:800;">${cat.name}</span><input type="color" value="${cat.color}" onchange="updateCatColor('${cat.id}',this.value)"></div>
+            <div class="cat-action-btn-group">
+                <button class="cat-panel-btn cat-btn-edit" onclick="moveCategory('${cat.id}', -1)" ${catIdx === 0 ? 'disabled style="opacity:0.3"' : ''}>▲</button>
+                <button class="cat-panel-btn cat-btn-edit" onclick="moveCategory('${cat.id}', 1)" ${catIdx === categories.length - 1 ? 'disabled style="opacity:0.3"' : ''}>▼</button>
+                <button class="cat-panel-btn cat-btn-edit" onclick="renameCategory('${cat.id}')">✏️</button>
+                <button class="cat-panel-btn cat-btn-del" onclick="deleteCategory('${cat.id}')">🗑️</button>
+            </div>
+        </div>`;
+        const sb=document.createElement('div');sb.className='manage-sub-box';
+        if(cat.subGroups&&cat.subGroups.length)cat.subGroups.forEach((g, gIdx)=>{
+            const bl=document.createElement('div');bl.className='manage-sub-group-block';
+            bl.innerHTML=`<div class="manage-sub-group-header"><span>📁 ${g.title}</span>
+                <div class="group-action-links">
+                    <span class="group-link-btn" onclick="moveSubGroup('${cat.id}','${g.id}', -1)" ${gIdx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>▲</span>
+                    <span class="group-link-btn" onclick="moveSubGroup('${cat.id}','${g.id}', 1)" ${gIdx === cat.subGroups.length - 1 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>▼</span>
+                    <span class="group-link-btn" onclick="renameSubGroup('${cat.id}','${g.id}')">改名</span>
+                    <span class="group-link-btn del" onclick="deleteSubGroup('${cat.id}','${g.id}')">刪除</span>
+                </div>
+            </div>`;
+            const sl=document.createElement('div');sl.className='manage-sub-list';
+            g.items.forEach((item,ii)=>{
+                const p=document.createElement('div');p.className='manage-sub-pill';p.innerHTML=item+' <span style="font-size:0.58rem;color:var(--text-muted);" onclick="event.stopPropagation();deleteSubItem(\''+cat.id+'\',\''+g.id+'\','+ii+')">✕</span>';
+                p.onclick=()=>{const nm=prompt('修改子分類：',item);if(nm&&nm.trim()){g.items[ii]=nm.trim();saveToStorage();renderManagePanel();renderCategorySelectors()}};sl.appendChild(p);
+            });
+            const ar=document.createElement('div');ar.style.cssText='display:flex;gap:3px;margin-top:3px;';
+            const ai=document.createElement('input');ai.type='text';ai.placeholder='新子分類...';ai.style.cssText='font-family:inherit;flex:1;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:0.68rem;background:var(--bg-main);color:var(--text-main);';
+            const ab=document.createElement('button');ab.innerText='+';ab.style.cssText='font-family:inherit;background:var(--primary);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-weight:700;';
+            ab.onclick=()=>{const v=ai.value.trim();if(v){g.items.push(v);saveToStorage();renderManagePanel();renderCategorySelectors()}};ar.appendChild(ai);ar.appendChild(ab);bl.appendChild(sl);bl.appendChild(ar);sb.appendChild(bl);
+        });
+        const agr=document.createElement('div');agr.style.cssText='display:flex;gap:3px;margin-top:5px;';
+        const agi=document.createElement('input');agi.type='text';agi.placeholder='新子群組名稱...';agi.style.cssText='font-family:inherit;flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.7rem;background:var(--bg-main);color:var(--text-main);';
+        const agb=document.createElement('button');agb.innerText='➕ 新增群組';agb.style.cssText='font-family:inherit;background:var(--text-main);color:var(--bg-card);border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:0.7rem;font-weight:700;';
+        agb.onclick=()=>{const v=agi.value.trim();if(v){if(!cat.subGroups)cat.subGroups=[];cat.subGroups.push({id:'g'+Date.now(),title:v,items:[]});saveToStorage();renderManagePanel();renderCategorySelectors()}};agr.appendChild(agi);agr.appendChild(agb);mi.appendChild(sb);mi.appendChild(agr);ct.appendChild(mi);
+    }
+
+    function updateCatColor(cid,c){const cat=categories.find(x=>x.id===cid);if(cat){cat.color=c;saveToStorage();renderCategoryFilters();renderCategorySelectors()}}
+    function renameCategory(cid){const cat=categories.find(x=>x.id===cid);if(!cat)return;const n=prompt('修改類別名稱：',cat.name);if(n&&n.trim()){cat.name=n.trim();saveToStorage();renderManageTabs();renderManagePanel();renderCategoryFilters();renderCategorySelectors()}}
+    function deleteCategory(cid){const cat=categories.find(x=>x.id===cid);if(!cat||!confirm('確定刪除「'+cat.name+'」及其所有子分類？'))return;categories=categories.filter(x=>x.id!==cid);saveToStorage();if(currentFilterCatId===cid)currentFilterCatId='all';if(categories.length>0)managementActiveCatId=categories[0].id;else managementActiveCatId='';renderManageTabs();renderManagePanel();renderCategoryFilters();renderCategorySelectors()}
+    function renameSubGroup(cid,gid){const cat=categories.find(x=>x.id===cid);if(!cat||!cat.subGroups)return;const g=cat.subGroups.find(x=>x.id===gid);if(!g)return;const n=prompt('修改群組名稱：',g.title);if(n&&n.trim()){g.title=n.trim();saveToStorage();renderManagePanel();renderCategorySelectors()}}
+    function deleteSubGroup(cid,gid){const cat=categories.find(x=>x.id===cid);if(!cat||!cat.subGroups||!confirm('確定刪除此子群組？'))return;cat.subGroups=cat.subGroups.filter(x=>x.id!==gid);saveToStorage();renderManagePanel();renderCategorySelectors()}
+    function deleteSubItem(cid,gid,ii){const cat=categories.find(x=>x.id===cid);if(!cat||!cat.subGroups)return;const g=cat.subGroups.find(x=>x.id===gid);if(!g)return;g.items.splice(ii,1);saveToStorage();renderManagePanel();renderCategorySelectors()}
+    document.getElementById('add-new-cat-btn').addEventListener('click',()=>{const n=document.getElementById('new-cat-name').value.trim();if(!n)return;categories.push({id:'cat_'+Date.now(),name:n,color:document.getElementById('new-cat-color').value,subGroups:[]});saveToStorage();managementActiveCatId=categories[categories.length-1].id;document.getElementById('new-cat-name').value='';renderManageTabs();renderManagePanel();renderCategoryFilters();renderCategorySelectors()});
+
+    function exportAsImage(){const el=document.querySelector('.calendar-container');if(!el||typeof html2canvas==='undefined')return alert('圖片匯出模組載入失敗！');html2canvas(el,{scale:2,useCORS:true,backgroundColor:getComputedStyle(document.body).getPropertyValue('--bg-main')}).then(canvas=>{const a=document.createElement('a');a.download='知識管理庫.png';a.href=canvas.toDataURL('image/png');a.click()})}
+
+    function setupEventListeners(){
+        document.getElementById('btn-toggle-emoji-modal').addEventListener('click',openEmojiModal);
+        document.getElementById('add-evt-btn').addEventListener('click',submitEventForm);
+        document.getElementById('color-toggle-btn').addEventListener('click',openManageModal);
+        document.getElementById('theme-select').addEventListener('change', (e) => setTheme(e.target.value));
+        document.getElementById('sort-btn-manual').addEventListener('click',()=>setSortMode('manual'));
+        document.getElementById('sort-btn-az').addEventListener('click',()=>setSortMode('az'));
+        document.getElementById('sort-btn-za').addEventListener('click',()=>setSortMode('za'));
+        document.getElementById('btn-export-pdf').addEventListener('click',()=>{document.getElementById('print-timestamp').innerText=new Date().toLocaleString('zh-TW');window.print()});
+        document.getElementById('btn-export-img').addEventListener('click',exportAsImage);
+        document.getElementById('evt-title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitEventForm()}});
+        document.getElementById('evt-url').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitEventForm()}})
+    }
 </script>
 </body>
 </html>
-
